@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>B99 Performance Suspension — Invoice Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0A0A0A; --panel:#151515; --panel-2:#1F1F1F; --line:#333333;
+  --gold:#EDE800; --gold-dim:#9A9600; --ink:#F6F6F4; --muted:#8C8C88;
+  --green:#5BC24A; --red:#D64B3C; --pad:16px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overscroll-behavior:none;overflow-x:hidden;max-width:100vw}
+body{background:var(--navy);color:var(--ink);
+  font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:15px;line-height:1.4}
+h1,h2{font-family:"Barlow Condensed",Impact,sans-serif;font-weight:600;letter-spacing:.02em;margin:0}
+
+.app{display:grid;grid-template-columns:1fr;height:100dvh;overflow:hidden;max-width:100vw}
+.app > *{min-width:0}
+@media(max-height:520px){
+  html,body{height:auto}
+  .app{height:auto;overflow:visible}
+  .catalog{height:auto}
+  .scroll{overflow:visible;max-height:none}
+}
+@media(min-width:900px){.app{grid-template-columns:1fr 480px}}
+@media(min-width:1280px){.app{grid-template-columns:1fr 560px}}
+
+.catalog{display:flex;flex-direction:column;min-height:0;min-width:0;border-right:1px solid var(--line)}
+.masthead{padding:14px var(--pad) 12px;border-bottom:1px solid var(--line);background:var(--panel)}
+.brand{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.brand h1{font-size:26px;line-height:1;text-transform:uppercase}
+.brand h1 span{color:var(--gold)}
+.brand .tag{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.mark{display:inline-block;line-height:1}
+.mark-word{font-family:"Barlow Condensed",Impact,sans-serif;font-weight:700;font-size:40px;
+  letter-spacing:.02em;color:var(--ink);transform:skewX(-11deg);
+  -webkit-text-stroke:1px var(--ink);line-height:.82}
+.mark-rule{margin-top:4px;font-family:"IBM Plex Mono",monospace;font-size:6.5px;font-weight:600;
+  letter-spacing:.04em;color:var(--navy);background:var(--gold);
+  padding:2px 5px;transform:skewX(-11deg);white-space:nowrap;text-align:center}
+@media print{
+  .mark-word{color:#000;-webkit-text-stroke:1px #000}
+  .mark-rule{background:#EDE800;color:#000}
+}
+
+.biketitle{margin-top:13px;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--gold-dim);font-weight:600}
+.bikepick{margin-top:5px;display:flex;gap:10px;align-items:stretch;flex-wrap:wrap}
+.bikesel{position:relative;flex:1;min-width:240px}
+.bikesel::after{content:"\25BE";position:absolute;right:14px;top:50%;transform:translateY(-50%);
+  color:var(--gold);pointer-events:none;font-size:15px}
+.bikesel select{appearance:none;width:100%;padding:13px 38px 13px 14px;cursor:pointer;
+  background:var(--navy);border:1px solid var(--gold-dim);border-left:3px solid var(--gold);
+  border-radius:5px;color:var(--ink);font-family:"Barlow Condensed",sans-serif;
+  font-size:21px;font-weight:600;letter-spacing:.03em}
+.bikesel select:focus{outline:none;border-color:var(--gold)}
+.specs{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.spec{background:var(--panel-2);border:1px solid var(--line);color:var(--muted);
+  padding:6px 11px;border-radius:3px;font-size:11px;letter-spacing:.07em;text-transform:uppercase;
+  font-family:"Barlow Condensed",sans-serif;font-weight:600}
+.spec b{color:var(--gold);font-weight:600}
+
+.tools{padding:12px var(--pad);border-bottom:1px solid var(--line);background:var(--panel)}
+.search{position:relative}
+.search input{width:100%;padding:14px 44px 14px 14px;font-size:17px;background:var(--navy);
+  border:1px solid var(--line);border-radius:6px;color:var(--ink);font-family:"IBM Plex Mono",monospace}
+.search input:focus{outline:none;border-color:var(--gold)}
+.search .x{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:34px;height:34px;
+  border:0;background:transparent;color:var(--muted);font-size:20px;cursor:pointer}
+.hint{margin-top:7px;font-size:11.5px;color:var(--muted)}
+.cats{display:flex;gap:6px;overflow-x:auto;padding:10px var(--pad) 0;scrollbar-width:none}
+.cats::-webkit-scrollbar{display:none}
+.cat{flex:0 0 auto;padding:7px 12px;border:1px solid var(--line);background:transparent;
+  color:var(--muted);border-radius:20px;font-size:12.5px;cursor:pointer;white-space:nowrap;font-weight:500}
+.cat[aria-pressed="true"]{background:var(--gold);border-color:var(--gold);color:var(--navy);font-weight:600}
+.scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px var(--pad) 120px}
+.sec-label{font-family:"Barlow Condensed",sans-serif;font-size:13px;font-weight:600;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--gold-dim);
+  margin:18px 0 8px;padding-bottom:5px;border-bottom:1px solid var(--line)}
+.sec-label:first-child{margin-top:0}
+
+
+.part{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:11px 12px;
+  margin-bottom:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink);
+  border-radius:4px;cursor:pointer}
+.part:active{background:var(--panel-2);border-color:var(--gold)}
+.part .pn{font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:600;color:var(--gold);flex:0 0 132px}
+.part .d{flex:1;min-width:0;font-size:13.5px;line-height:1.3;overflow-wrap:anywhere}
+.part .d small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+.part .pr{font-family:"IBM Plex Mono",monospace;font-size:13px;flex:0 0 auto}
+.part .rec{flex:0 0 auto;font-size:9.5px;letter-spacing:.1em;color:var(--green);
+  border:1px solid var(--green);border-radius:2px;padding:2px 5px}
+@media(max-width:560px){.part{flex-wrap:wrap}.part .pn{flex:0 0 100%}.part .d{flex:1 1 auto}}
+.empty{padding:40px 10px;text-align:center;color:var(--muted)}
+.empty b{display:block;font-family:"Barlow Condensed",sans-serif;font-size:20px;color:var(--ink);margin-bottom:6px}
+
+.ticket{display:flex;flex-direction:column;min-height:0;min-width:0;background:var(--panel);position:relative}
+.ticket::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;
+  background:repeating-linear-gradient(to bottom,var(--gold) 0 5px,transparent 5px 12px);opacity:.5}
+.t-head{padding:14px var(--pad) 10px;border-bottom:1px solid var(--line)}
+.t-head .r1{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.t-head h2{font-size:20px;text-transform:uppercase;letter-spacing:.1em}
+.t-head .inv{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--muted)}
+.cust{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
+.cust input{background:var(--navy);border:1px solid var(--line);border-radius:3px;color:var(--ink);
+  padding:9px;font-size:14px;width:100%}
+.cust input:focus{outline:none;border-color:var(--gold)}
+.cust input.wide{grid-column:1 / -1}
+.lines{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px var(--pad)}
+.line{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center;
+  padding:10px 0;border-bottom:1px solid var(--line)}
+.line.new{animation:slide .22s ease-out}
+@keyframes slide{from{opacity:0;transform:translateX(10px)}to{opacity:1;transform:none}}
+.line .info{min-width:0}
+.line .lpn{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--gold);font-weight:600}
+.line .lbike{font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.line .ld{font-size:13px;line-height:1.3;overflow-wrap:anywhere}
+.line .ctl{display:flex;align-items:center;gap:6px}
+.qty{display:flex;align-items:center;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.qty button{width:34px;height:34px;border:0;background:var(--panel-2);color:var(--ink);
+  font-size:18px;cursor:pointer;font-family:"IBM Plex Mono",monospace}
+.qty button:active{background:var(--gold);color:var(--navy)}
+.qty span{width:34px;text-align:center;font-family:"IBM Plex Mono",monospace;font-size:14px}
+.line .amt{font-family:"IBM Plex Mono",monospace;font-size:14px;min-width:74px;text-align:right}
+.line .del{width:32px;height:32px;border:1px solid var(--line);background:transparent;
+  color:var(--muted);border-radius:4px;font-size:16px;cursor:pointer}
+.line .del:active{border-color:var(--red);color:var(--red)}
+.line .ovr{grid-column:1 / -1;display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--muted)}
+.line .ovr input{background:var(--navy);border:1px solid var(--line);border-radius:3px;color:var(--gold);
+  padding:5px 7px;width:92px;font-family:"IBM Plex Mono",monospace;font-size:12.5px}
+.taxtog{margin-left:auto;padding:4px 9px;border-radius:3px;cursor:pointer;font-size:10.5px;
+  letter-spacing:.09em;text-transform:uppercase;font-weight:600;
+  border:1px solid var(--line);background:transparent;color:var(--muted)}
+.taxtog.on{border-color:var(--gold-dim);color:var(--gold)}
+.blank{padding:44px 16px;text-align:center;color:var(--muted)}
+.blank b{display:block;font-family:"Barlow Condensed",sans-serif;font-size:19px;color:var(--ink);
+  margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em}
+
+.t-foot{border-top:1px solid var(--line);padding:12px var(--pad);background:var(--panel-2)}
+.trow{display:flex;justify-content:space-between;align-items:center;font-size:13.5px;padding:3px 0;color:var(--muted)}
+.trow b{font-family:"IBM Plex Mono",monospace;color:var(--ink);font-weight:500}
+.trow input{background:var(--navy);border:1px solid var(--line);border-radius:3px;color:var(--ink);
+  padding:5px 7px;width:82px;text-align:right;font-family:"IBM Plex Mono",monospace;font-size:12.5px}
+.grand{display:flex;justify-content:space-between;align-items:baseline;margin-top:8px;
+  padding-top:10px;border-top:2px solid var(--gold)}
+.grand span{font-family:"Barlow Condensed",sans-serif;font-size:15px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--gold)}
+.grand b{font-family:"Barlow Condensed",sans-serif;font-size:38px;font-weight:700;line-height:1;color:var(--ink)}
+.acts{display:flex;gap:7px;margin-top:11px;flex-wrap:wrap}
+.acts button{flex:1;min-width:88px;padding:11px 8px;border-radius:4px;font-size:12.5px;cursor:pointer;
+  font-family:"Barlow Condensed",sans-serif;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  border:1px solid var(--line);background:var(--navy);color:var(--ink)}
+.acts button.primary{background:var(--gold);border-color:var(--gold);color:var(--navy)}
+.acts button:active{opacity:.75}
+
+.fab{position:fixed;left:12px;right:12px;bottom:12px;z-index:40;padding:15px;border:0;border-radius:8px;
+  background:var(--gold);color:var(--navy);font-family:"Barlow Condensed",sans-serif;font-size:17px;
+  font-weight:700;letter-spacing:.1em;text-transform:uppercase;box-shadow:0 6px 22px rgba(0,0,0,.45);
+  cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+@media(max-width:899px){
+  .ticket{position:fixed;inset:0;z-index:50;transform:translateY(100%);transition:transform .26s ease}
+  .ticket.open{transform:none}
+  .app{grid-template-columns:1fr}
+  .closebtn{display:block !important}
+}
+@media(min-width:900px){.fab{display:none !important}}
+.closebtn{display:none;background:transparent;border:1px solid var(--line);color:var(--muted);
+  border-radius:4px;padding:5px 11px;font-size:12px;cursor:pointer}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:88px;z-index:80;background:var(--gold);
+  color:var(--navy);padding:9px 18px;border-radius:20px;font-weight:600;font-size:13px;
+  opacity:0;pointer-events:none;transition:opacity .2s;max-width:88vw;text-align:center}
+.toast.show{opacity:1}
+.ver{padding:14px 0 0;font-size:10.5px;color:var(--muted);font-family:"IBM Plex Mono",monospace}
+
+@media print{
+  body{background:#fff;color:#000}
+  .catalog,.fab,.acts,.closebtn,.ticket::before{display:none !important}
+  .app{display:block;height:auto}
+  .ticket{position:static;transform:none;background:#fff;color:#000;display:block}
+  .t-head,.t-foot,.lines{background:#fff;border-color:#999}
+  .lines{overflow:visible}
+  .cust input,.trow input{border:0;color:#000;background:#fff;padding:2px 0}
+  .line .ctl .del,.qty button{display:none}
+  .qty{border:0}
+  .line .lpn,.grand span,.grand b{color:#000}
+  .line .ovr{display:none}
+  #laborRow{display:flex !important}
+  .print-only{display:block !important}
+}
+.print-only{display:none}
+</style>
+</head>
+<body>
+<div class="app">
+  <section class="catalog">
+    <div class="masthead">
+      <div class="brand">
+        <div class="mark" aria-label="B99 Performance Suspension">
+          <div class="mark-word">B99</div>
+          <div class="mark-rule">P E R F O R M A N C E &nbsp;&middot;&nbsp; S U S P E N S I O N</div>
+        </div>
+        <div class="tag">Invoice Builder</div>
+      </div>
+      <div class="biketitle">Bike &mdash; tap to change</div>
+      <div class="bikepick">
+        <div class="bikesel"><select id="bike" aria-label="Bike"></select></div>
+      </div>
+      <div class="specs" id="specs" style="margin-top:9px"></div>
+    </div>
+
+    <div class="tools">
+      <div class="search">
+        <input id="q" type="search" inputmode="search" autocomplete="off" autocapitalize="off"
+               spellcheck="false" placeholder="Search or scan a part&hellip;">
+        <button class="x" id="clearQ" aria-label="Clear search">&times;</button>
+      </div>
+      <div class="hint">Type a few letters &mdash; <b>seal</b>, <b>gold</b>, <b>bush</b>, <b>oil</b>. Scanner input works here too.</div>
+    </div>
+
+    <div class="cats" id="cats"></div>
+
+    <div class="scroll" id="scroll">
+      <div class="sec-label" id="partsLabel">Parts</div>
+      <div id="list"></div>
+      <div class="ver" id="ver"></div>
+    </div>
+  </section>
+
+  <aside class="ticket" id="ticket">
+    <div class="t-head">
+      <div class="r1">
+        <h2>Work Order</h2>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div class="inv" id="invNo"></div>
+          <button class="closebtn" id="closeT">Back</button>
+        </div>
+      </div>
+      <div class="cust">
+        <input id="cName" placeholder="Customer name">
+        <input id="cPhone" placeholder="Phone / email">
+        <input id="cBike" class="wide" placeholder="Bike">
+        <input id="cRider" placeholder="Job notes">
+        <input id="cWO" placeholder="Work order ref">
+      </div>
+    </div>
+    <div class="lines" id="lines"></div>
+    <div class="t-foot">
+      <div class="trow"><span>Subtotal</span><b id="sub">$0.00</b></div>
+      <div class="trow" id="laborRow" style="display:none"><span>Of which labor (not taxed)</span><b id="labor">$0.00</b></div>
+      <div class="trow"><span>Tax rate</span><span><input id="taxRate" type="number" step="0.01" min="0" value="6.25"> %</span></div>
+      <div class="trow"><span>Tax on parts</span><b id="tax">$0.00</b></div>
+      <div class="trow"><span>Shipping</span><span>$ <input id="ship" type="number" step="0.01" min="0" value="0"></span></div>
+      <div class="grand"><span>Total due</span><b id="total">$0.00</b></div>
+      <div class="acts">
+        <button id="addCustom">+ Custom line</button>
+        <button id="exportCsv">Export CSV</button>
+        <button id="clearAll">Clear</button>
+        <button class="primary" id="printBtn">Print / PDF</button>
+      </div>
+      <div class="print-only" style="margin-top:14px;font-size:11px;color:#444;border-top:1px solid #999;padding-top:8px">
+        B99 Performance Suspension &middot; Parts and pricing per Race Tech published MSRP.
+      </div>
+    </div>
+  </aside>
+</div>
+<button class="fab" id="fab"><span id="fabCount">Ticket &mdash; 0 lines</span><span id="fabTotal">$0.00</span></button>
+<div class="toast" id="toast"></div>
+
+<script>
+/* Baked-in copy of catalog.json so this file works standalone from the Files app.
+   When hosted, a newer catalog.json sitting beside it wins. */
+const EMBEDDED = {"schema": 1, "generated": "2026-08-20-b99", "source": "racetech.com Product Search results, entered per model (15 bikes)", "brand": {"name": "B99 Performance Suspension", "site": "", "taxRate": 6.25, "taxNote": "Set your own state rate. Labor and service lines are not taxed."}, "categories": [{"name": "B99 Labor", "order": 0, "hidden": false}, {"name": "Fork Valving", "order": 1, "hidden": false}, {"name": "Fork Maintenance", "order": 2, "hidden": false}, {"name": "Fork Springs", "order": 3, "hidden": false}, {"name": "Pressure Springs", "order": 4, "hidden": false}, {"name": "Shock Valving", "order": 5, "hidden": false}, {"name": "Shock Maintenance", "order": 6, "hidden": false}, {"name": "Shock Springs", "order": 7, "hidden": false}, {"name": "Fork Labor", "order": 8, "hidden": false}, {"name": "Shock Labor", "order": 9, "hidden": false}, {"name": "Fork Lowering", "order": 10, "hidden": true, "why": "Street / flat-track, not MX"}, {"name": "Shock Lowering", "order": 11, "hidden": true, "why": "Street / flat-track, not MX"}, {"name": "Holeshot Device", "order": 12, "hidden": true, "why": "Not suspension service"}, {"name": "Fork Tools", "order": 13, "hidden": true, "why": "Owns the tools"}, {"name": "Shock Tools", "order": 14, "hidden": true, "why": "Owns the tools"}, {"name": "Engine Labor", "order": 15, "hidden": true, "why": "Doesn't do engine work"}, {"name": "Complete Shocks", "order": 7.5, "hidden": false}], "parts": {"FRSP 454938": {"g": "FORK", "c": "Fork Springs", "d": "RT FK SPR 45.0x491 .38kg (pr)", "p": 149.99, "tax": true}, "FRSP 454940": {"g": "FORK", "c": "Fork Springs", "d": "RT FK SPR 45.0x491 .40kg (pr)", "p": 149.99, "tax": true}, "FRSP 454942": {"g": "FORK", "c": "Fork Springs", "d": "RT FK SPR 45.0x491 .42kg (pr)", "p": 149.99, "tax": true}, "FRSP 454943": {"g": "FORK", "c": "Fork Springs", "d": "RT FK SPR 45.0x491 .43kg (pr)", "p": 149.99, "tax": true}, "FRSP 454944": {"g": "FORK", "c": "Fork Springs", "d": "RT FK SPR 45.0x491 .44kg (pr)", "p": 149.99, "tax": true}, "FRSP 454945": {"g": "FORK", "c": "Fork Springs", "d": "RT FK SPR 45.0x491 .45kg (pr)", "p": 149.99, "tax": true}, "FRSP 454946": {"g": "FORK", "c": "Fork Springs", "d": "RT FK SPR 45.0x491 .46kg (pr)", "p": 149.99, "tax": true}, "FRSP 454947": {"g": "FORK", "c": "Fork Springs", "d": "RT FK SPR 45.0x491 .47kg (pr)", "p": 149.99, "tax": true}, "FRSP 454948": {"g": "FORK", "c": "Fork Springs", "d": "RT FK SPR 45.0x491 .48kg (pr)", "p": 149.99, "tax": true}, "FRSP 454949": {"g": "FORK", "c": "Fork Springs", "d": "RT FK SPR 45.0x491 .49kg (pr)", "p": 149.99, "tax": true, "n": "Stock rate"}, "FRSP 454950": {"g": "FORK", "c": "Fork Springs", "d": "RT FK SPR 45.0x491 .50kg (pr)", "p": 149.99, "tax": true}, "FRSP 454951": {"g": "FORK", "c": "Fork Springs", "d": "RT FK SPR 45.0x491 .51kg (pr)", "p": 149.99, "tax": true}, "FRSP 454952": {"g": "FORK", "c": "Fork Springs", "d": "RT FK SPR 45.0x491 .52kg (pr)", "p": 149.99, "tax": true}, "FRSP 454953": {"g": "FORK", "c": "Fork Springs", "d": "RT FK SPR 45.0x491 .53kg (pr)", "p": 149.99, "tax": true}, "FRSP 454954": {"g": "FORK", "c": "Fork Springs", "d": "RT FK SPR 45.0x491 .54kg (pr)", "p": 149.99, "tax": true}, "FRSP 454955": {"g": "FORK", "c": "Fork Springs", "d": "RT FK SPR 45.0x491 .55kg (pr)", "p": 149.99, "tax": true}, "FRSP 454956": {"g": "FORK", "c": "Fork Springs", "d": "RT FK SPR 45.0x491 .56kg (pr)", "p": 149.99, "tax": true}, "FRSP 454957": {"g": "FORK", "c": "Fork Springs", "d": "RT FK SPR 45.0x491 .57kg (pr)", "p": 149.99, "tax": true}, "FRSP 454958": {"g": "FORK", "c": "Fork Springs", "d": "RT FK SPR 45.0x491 .58kg (pr)", "p": 149.99, "tax": true}, "FRSS-294680-P": {"g": "FORK", "c": "Fork Springs", "d": "Fork Spring Perch Set (pair)", "p": 149.99, "tax": true, "n": "Small holes - must be drilled for application. Rec. for SX/AX/Freestyle/Enduro X"}, "FRPSP-278099-140": {"g": "FORK", "c": "Pressure Springs", "d": "PRESS SPR 27.8x99 1.4kg (pr)", "p": 79.99, "tax": true}, "FRPSP-278099-180": {"g": "FORK", "c": "Pressure Springs", "d": "PRESS SPR 27.8x99 1.8kg (pr)", "p": 79.99, "tax": true}, "FRPSP-278099-220": {"g": "FORK", "c": "Pressure Springs", "d": "PRESS SPR 27.8x99 2.2kg (pr)", "p": 79.99, "tax": true}, "FRPSP-278099-260": {"g": "FORK", "c": "Pressure Springs", "d": "PRESS SPR 27.8x99 2.6kg (pr)", "p": 79.99, "tax": true}, "FMGV 392501C": {"g": "FORK", "c": "Fork Valving", "d": "Fork Gold Valve Kit - Compression AND Rebound/Mid-Valve", "p": 339.99, "tax": true, "n": "Kits ending in C include comp + rebound/mid-valve"}, "FMGV 392501PC": {"g": "FORK", "c": "Fork Valving", "d": "Fork Gold Valve Platinum Kit - steel alloy comp + rebound/mid-valve", "p": 369.99, "tax": true, "n": "For extreme riding: SX, AX, Freestyle. Includes extra shims"}, "USF05": {"g": "FORK", "c": "Fork Maintenance", "d": "Fork Oil 5wt", "p": 29.99, "tax": true, "n": "Check the Race Tech sheet for this bike's oil level"}, "FSOS 49 P": {"g": "FORK", "c": "Fork Maintenance", "d": "Fork Seals (pair)", "p": 21.98, "tax": true}, "FSDS 49 P": {"g": "FORK", "c": "Fork Maintenance", "d": "Fork Dust Seals (pair)", "p": 39.99, "tax": true}, "FMBI 49201 P": {"g": "FORK", "c": "Fork Maintenance", "d": "Inner Fork Bushings (pair)", "p": 39.99, "tax": true}, "FMBO 491515 P": {"g": "FORK", "c": "Fork Maintenance", "d": "Outer Fork Bushings (pair)", "p": 49.98, "tax": true}, "FPRR 140403 P": {"g": "FORK", "c": "Fork Maintenance", "d": "Replacement Damping Rods (pair)", "p": 199.99, "tax": true, "n": "Stock rods commonly wear through coating and leak"}, "FSTC CS1424": {"g": "FORK", "c": "Fork Maintenance", "d": "Twin Chamber - Damping Rod Shaft Seal (each)", "p": 24.99, "tax": true}, "FPLS 145210025 P": {"g": "FORK", "c": "Fork Lowering", "d": "25mm (1\") Lowering Spacers (pair)", "p": 39.99, "tax": true}, "FRSP M4547": {"g": "FORK", "c": "Fork Lowering", "d": "25mm (1\") Lowering Custom Spring Series", "p": 199.99, "tax": true, "n": "Series - confirm exact rate at order"}, "FPLS 145210038 P": {"g": "FORK", "c": "Fork Lowering", "d": "38mm (1.5\") Lowering Spacers (pair)", "p": 39.99, "tax": true}, "FRSP MA4545": {"g": "FORK", "c": "Fork Lowering", "d": "38mm (1.5\") Lowering Custom Spring Series", "p": 199.99, "tax": true, "n": "Series - confirm exact rate at order"}, "FPLS 145210050 P": {"g": "FORK", "c": "Fork Lowering", "d": "50mm (2\") Lowering Spacers (pair)", "p": 39.99, "tax": true}, "FRSP M4544": {"g": "FORK", "c": "Fork Lowering", "d": "50mm (2\") Lowering Custom Spring Series", "p": 199.99, "tax": true, "n": "Series - confirm exact rate at order"}, "FRSP MA4542": {"g": "FORK", "c": "Fork Lowering", "d": "75mm (3\") Lowering Custom Spring Series", "p": 199.99, "tax": true, "n": "Series - confirm exact rate at order. 75mm spacers u/k"}, "FPLS 145210100 P": {"g": "FORK", "c": "Fork Lowering", "d": "Flat Track Lowering Spacers (pair) - lowered 100mm", "p": 49.99, "tax": true}, "FRSP M4537": {"g": "FORK", "c": "Fork Lowering", "d": "Flat Track Fork Spring Series (pair)", "p": 199.99, "tax": true, "n": "Series - confirm exact rate at order"}, "FTHD 2531": {"g": "FORK", "c": "Holeshot Device", "d": "RT Holeshot Device - Double Button by Tamer", "p": 139.98, "tax": true}, "FTHD FGB403": {"g": "FORK", "c": "Holeshot Device", "d": "Holeshot Support Strengthening Bracket", "p": 24.98, "tax": true, "n": "Same P/N listed for bracket #1 and #2 - order qty 2 for both"}, "TFSD 50": {"g": "FORK", "c": "Fork Tools", "d": "Fork Seal Driver (required if replacing seals or bushings)", "p": 109.99, "tax": true}, "TFCW 4650": {"g": "FORK", "c": "Fork Tools", "d": "Fork Cap Wrench", "p": 59.99, "tax": true}, "TFCT 451919": {"g": "FORK", "c": "Fork Tools", "d": "Fork Compression Tool", "p": 69.99, "tax": true, "n": "Comp assembly + base bolt or cartridge seal head"}, "TFSH 10": {"g": "FORK", "c": "Fork Tools", "d": "Fork Shaft OD Holding Tool", "p": 64.99, "tax": true}, "TFSH 20": {"g": "FORK", "c": "Fork Tools", "d": "Fork Cartridge OD Holding Tool", "p": 64.99, "tax": true}, "TFHP 01": {"g": "FORK", "c": "Fork Tools", "d": "Fork Spring Clip (for Twin-Chamber forks)", "p": 34.99, "tax": true}, "TFOL 02": {"g": "FORK", "c": "Fork Tools", "d": "Fork Oil Level Tool", "p": 144.99, "tax": true}, "TFGC 500": {"g": "FORK", "c": "Fork Tools", "d": "Graduated Cylinder (500cc)", "p": 24.99, "tax": true}, "LDFORB2": {"g": "FORK", "c": "Fork Labor", "d": "Rebuild Front Suspension (labor only)", "p": 200.0, "tax": false, "n": "Race Tech in-house labor rate"}, "LDFORV2": {"g": "FORK", "c": "Fork Labor", "d": "Install Gold Valves and Rebuild Front Suspension (labor only)", "p": 200.0, "tax": false, "n": "Race Tech in-house labor rate"}, "SRSP 672446": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 66.9x64x243 4.6kg", "p": 149.99, "tax": true}, "SRSP 672448": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 66.9x64x243 4.8kg", "p": 149.99, "tax": true}, "SRSP 672450": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 66.9x64x243 5.0kg", "p": 149.99, "tax": true, "n": "Closest to stock 5.1 kg/mm"}, "SRSP 672452": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 66.9x64x243 5.2kg", "p": 149.99, "tax": true}, "SRSP 672454": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 66.9x64x243 5.4kg", "p": 149.99, "tax": true}, "SRSP 672456": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 66.9x64x243 5.6kg", "p": 149.99, "tax": true}, "SRSP 672458": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 66.9x64x243 5.8kg", "p": 149.99, "tax": true}, "SRSP 672460": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 66.9x64x243 6.0kg", "p": 149.99, "tax": true}, "SRSP 672463": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 66.9x64x243 6.3kg", "p": 149.99, "tax": true}, "SRSP 672466": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 66.9x64x243 6.6kg", "p": 149.99, "tax": true}, "SMPC 6015066": {"g": "SHOCK", "c": "Shock Springs", "d": "Spring Preload Adjuster Collar Set (billet aluminum)", "p": 89.99, "tax": true}, "SMGV 5003": {"g": "SHOCK", "c": "Shock Valving", "d": "Shock Gold Valve Kit (Next Gen Low Deflection)", "p": 199.99, "tax": true}, "SHCV 2306PK": {"g": "SHOCK", "c": "Shock Valving", "d": "Shock Hi-Speed Comp Adjuster Shim Pack Series", "p": 19.99, "tax": true, "n": "Required for AX/SX/Freestyle. Requires Shock Gold Valve purchase"}, "SMRS 1212500": {"g": "SHOCK", "c": "Shock Valving", "d": "Rebound Separator Valve", "p": 59.99, "tax": true, "n": "Bleed must be drilled - see setup details for size"}, "US1": {"g": "SHOCK", "c": "Shock Maintenance", "d": "Shock Oil (less than 1 qt/liter required)", "p": 29.99, "tax": true}, "SSOS 16S": {"g": "SHOCK", "c": "Shock Maintenance", "d": "Shock Oil and Dust Seal Set (set)", "p": 39.99, "tax": true, "n": "Set preferred over individual seals"}, "SSOS 16": {"g": "SHOCK", "c": "Shock Maintenance", "d": "Shock Low Friction Oil Seal (each)", "p": 29.99, "tax": true, "n": "Individual - set preferred if available"}, "SSDS 16": {"g": "SHOCK", "c": "Shock Maintenance", "d": "Shock Low Friction Dust Seal (each)", "p": 11.99, "tax": true, "n": "Individual - set preferred if available"}, "SMSB 1614": {"g": "SHOCK", "c": "Shock Maintenance", "d": "Shock Shaft Bushing (each)", "p": 14.99, "tax": true}, "SSBO 165357": {"g": "SHOCK", "c": "Shock Maintenance", "d": "Bottom-Out Bumper (each)", "p": 29.99, "tax": true, "n": "Wears out in about 3 months"}, "SSBL 485105": {"g": "SHOCK", "c": "Shock Maintenance", "d": "Reservoir Bladder (each)", "p": 24.99, "tax": true}, "SMRC 48501": {"g": "SHOCK", "c": "Shock Maintenance", "d": "Reservoir Bladder Cap (each)", "p": 99.99, "tax": true, "n": "Not legal for AMA Stock Class"}, "SPLS 16": {"g": "SHOCK", "c": "Shock Lowering", "d": "Flat Track Lowering Spacer - lowered 15mm", "p": 39.99, "tax": true, "n": "Remove top out spring if present"}, "SMSP 6420": {"g": "SHOCK", "c": "Shock Lowering", "d": "Flat Track Rear Shock Spring Series", "p": 149.99, "tax": true, "n": "Series - confirm rate at order"}, "SPSC 63606525": {"g": "SHOCK", "c": "Shock Lowering", "d": "Flat Track Spring Adapter Collar", "p": 39.99, "tax": true, "n": "Qty 1 required"}, "TSCP 01": {"g": "SHOCK", "c": "Shock Tools", "d": "Shock Clip Pick Tool", "p": 39.99, "tax": true}, "TFSH 14": {"g": "SHOCK", "c": "Shock Tools", "d": "Shock Shaft Holding Tool", "p": 74.99, "tax": true, "n": "Required for shaft eyelet disassembly"}, "TSSC 01": {"g": "SHOCK", "c": "Shock Tools", "d": "Shock Spring Compressor", "p": 219.99, "tax": true}, "TSPA 01": {"g": "SHOCK", "c": "Shock Tools", "d": "Shock Preload Adjusting Tool", "p": 64.99, "tax": true}, "TSPW 246785": {"g": "SHOCK", "c": "Shock Tools", "d": "Shock Preload Adjusting Wrench", "p": 74.99, "tax": true, "n": "Fits most preload collars"}, "TSSB 1612": {"g": "SHOCK", "c": "Shock Tools", "d": "Shock Seal Bullet Tool", "p": 24.99, "tax": true, "n": "Prevents seal damage on installation"}, "TSBD SET": {"g": "SHOCK", "c": "Shock Tools", "d": "Shock Bushing Driver Set", "p": 49.99, "tax": true}, "TSSS 01": {"g": "SHOCK", "c": "Shock Tools", "d": "Seal Head Setting Tool", "p": 54.99, "tax": true}, "TSNG 02": {"g": "SHOCK", "c": "Shock Tools", "d": "Nitrogen Gauge", "p": 159.99, "tax": true, "n": "Requires shock charging equipment"}, "TSCA 21": {"g": "SHOCK", "c": "Shock Tools", "d": "Shock Compression Adjuster Socket", "p": 32.99, "tax": true}, "TSCT 01": {"g": "SHOCK", "c": "Shock Tools", "d": "Bladder Removal Tool (Schrader type)", "p": 32.99, "tax": true}, "TSSM 01": {"g": "SHOCK", "c": "Shock Tools", "d": "Sag Master", "p": 10.99, "tax": true}, "TSVM 01": {"g": "SHOCK", "c": "Shock Tools", "d": "Vacuum Master (shock bleeding tool)", "p": 1999.99, "tax": true}, "LDSHRB1": {"g": "SHOCK", "c": "Shock Labor", "d": "Rebuild Rear Suspension (labor only)", "p": 200.0, "tax": false, "n": "Race Tech in-house labor rate"}, "LDSHRV1": {"g": "SHOCK", "c": "Shock Labor", "d": "Install Gold Valve and Rebuild Rear Suspension (labor only)", "p": 200.0, "tax": false, "n": "Race Tech in-house labor rate"}, "L4DCH FP014": {"g": "ENGINE", "c": "Engine Labor", "d": "Full Porting - requires valve job", "p": 410.0, "tax": false, "n": "Bare head, excludes rebuild. Includes soda blast + ultrasonic"}, "L4DCH PP014": {"g": "ENGINE", "c": "Engine Labor", "d": "Pocket Porting - requires valve job", "p": 140.0, "tax": false, "n": "Bare head, excludes rebuild. Includes soda blast + ultrasonic"}, "L4DCHVJ514": {"g": "ENGINE", "c": "Engine Labor", "d": "Valve Job - 5-Angle Radius", "p": 220.0, "tax": false, "n": "Bare head, excludes rebuild"}, "L4DCHVJ314": {"g": "ENGINE", "c": "Engine Labor", "d": "Valve Job - 3-Angle (basic)", "p": 177.5, "tax": false, "n": "Bare head, excludes rebuild"}, "L4DCHRB014": {"g": "ENGINE", "c": "Engine Labor", "d": "Head Rebuild - Labor (incl. setting valve lash)", "p": 100.0, "tax": false}, "L4DCYDEC10": {"g": "ENGINE", "c": "Engine Labor", "d": "Deck Cylinder for increased compression", "p": 72.5, "tax": false}, "L4DCYHON10": {"g": "ENGINE", "c": "Engine Labor", "d": "Cylinder Hone - Rigid (precision, not ball hone)", "p": 45.0, "tax": false}, "L4DCHVBC11": {"g": "ENGINE", "c": "Engine Labor", "d": "Backcut Intake Valve (each - qty 2 for 4-valve head)", "p": 27.5, "tax": false}, "L4DCHIS011": {"g": "ENGINE", "c": "Engine Labor", "d": "Install New Valve Seat (each - qty 4 for 4-valve head)", "p": 55.0, "tax": false, "n": "Requires a valve job"}, "L4DCHIG011": {"g": "ENGINE", "c": "Engine Labor", "d": "Install New Valve Guide (each - qty 4 for 4-valve head)", "p": 38.5, "tax": false, "n": "Requires a valve job"}, "L4DCRRBT10": {"g": "ENGINE", "c": "Engine Labor", "d": "Crank Rebuild", "p": 137.5, "tax": false}, "SRSP 4814013": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 48x136 1.3kg", "p": 149.99, "tax": true}, "SRSP 4814018": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 48x136 1.8kg", "p": 149.99, "tax": true}, "SRSP 4814022": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 48x136 2.2kg", "p": 149.99, "tax": true}, "SRSP 4814027": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 48x136 2.7kg", "p": 149.99, "tax": true}, "SRSP 4814031": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 48x136 3.1kg", "p": 149.99, "tax": true}, "SRSP 4814035": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 48x136 3.5kg", "p": 149.99, "tax": true}, "SRSP 4814040": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 48x136 4.0kg", "p": 149.99, "tax": true}, "SRSP 4814045": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 48x136 4.5kg", "p": 149.99, "tax": true}, "SRSP 4814049": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 48x136 4.9kg", "p": 149.99, "tax": true}, "SRSP 4814054": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 48x136 5.4kg", "p": 149.99, "tax": true}, "SRSP 4814063": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 48x136 6.3kg", "p": 149.99, "tax": true}, "SRSP 4814072": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 48x136 7.2kg", "p": 149.99, "tax": true}, "SRSP 4814080": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 48x136 8.0kg", "p": 149.99, "tax": true}, "SRSP 4814107": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 48x136 10.7kg", "p": 149.99, "tax": true}, "SRSP 4814116": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 48x136 11.6kg", "p": 149.99, "tax": true}, "SRSP 4814125": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 48x136 12.5kg", "p": 149.99, "tax": true}, "SRSP 4819P15": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 48.0x190 3.5/4.2 P15", "p": 199.99, "tax": true}, "SRSP 4819P20": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 48.0x190 4.0/4.8 P20", "p": 199.99, "tax": true}, "SRSP 4819P25": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 48.0x190 4.5/5.4 P25", "p": 199.99, "tax": true}, "SRSP 4819P30": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 48.0x190 5.0/6.0 P30", "p": 199.99, "tax": true}, "SRSP 4821P15": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 48.0x210 3.1/3.7 P15", "p": 199.99, "tax": true}, "SRSP 4821P20": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 48.0x210 3.5/4.2 P20", "p": 199.99, "tax": true}, "SRSP 4821P25": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 48.0x210 3.9/4.7 P25", "p": 199.99, "tax": true}, "SRSP 4821P30": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 48.0x210 4.3/5.2 P30", "p": 199.99, "tax": true}, "SRSP 4821P35": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 48.0x210 4.7/5.6 P35", "p": 199.99, "tax": true}, "SRSP 6023P10": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 60x230 P10 3.0/3.6", "p": 199.99, "tax": true}, "SRSP 6023P15": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 60x230 P15 3.5/4.2", "p": 199.99, "tax": true}, "SRSP 6023P20": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 60x230 P20 4.0/4.8", "p": 199.99, "tax": true}, "SRSP 6023P25": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 60x230 P25 4.5/5.4", "p": 199.99, "tax": true}, "SRSP 6023P30": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 60x230 P30 5.0/6.0", "p": 199.99, "tax": true}, "SRSP 6023P35": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 60x230 P35 5.5/6.6", "p": 199.99, "tax": true}, "SRSP 6023P40": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 60x230 P40 5.9/7.1", "p": 199.99, "tax": true}, "SRSP 6023P45": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 60x230 P45 6.3/7.6", "p": 199.99, "tax": true}, "SRSP 6023P50": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 60x230 P50 6.7/8.0", "p": 199.99, "tax": true}, "SRSP 6023P55": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 60x230 P55 7.1/8.5", "p": 199.99, "tax": true}, "SRSP 6023P60": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 60x230 P60 7.5/9.0", "p": 199.99, "tax": true}, "SRSP 6023P65": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 60x230 P65 7.9/9.5", "p": 199.99, "tax": true}, "SRSP 6023P70": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 60x230 P70 8.3/10.0", "p": 199.99, "tax": true}, "SRSP 6023P75": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 60x230 P75 8.7/10.4", "p": 199.99, "tax": true}, "SRSP 632536": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 62.8x247 3.6kg", "p": 149.99, "tax": true, "n": "SRSP 6325 series is shorter than stock by design - saves weight"}, "SRSP 632538": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 62.8x247 3.8kg", "p": 149.99, "tax": true, "n": "SRSP 6325 series is shorter than stock by design - saves weight"}, "SRSP 632540": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 62.8x247 4.0kg", "p": 149.99, "tax": true, "n": "SRSP 6325 series is shorter than stock by design - saves weight"}, "SRSP 632542": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 62.8x247 4.2kg", "p": 149.99, "tax": true, "n": "SRSP 6325 series is shorter than stock by design - saves weight"}, "SRSP 632544": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 62.8x247 4.4kg", "p": 149.99, "tax": true, "n": "SRSP 6325 series is shorter than stock by design - saves weight"}, "SRSP 632546": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 62.8x247 4.6kg", "p": 149.99, "tax": true, "n": "SRSP 6325 series is shorter than stock by design - saves weight"}, "SRSP 632548": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 62.8x247 4.8kg", "p": 149.99, "tax": true, "n": "SRSP 6325 series is shorter than stock by design - saves weight"}, "SRSP 632550": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 62.8x247 5.0kg", "p": 149.99, "tax": true, "n": "SRSP 6325 series is shorter than stock by design - saves weight"}, "SRSP 632552": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 62.8x247 5.2kg", "p": 149.99, "tax": true, "n": "SRSP 6325 series is shorter than stock by design - saves weight"}, "SRSP 632554": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 62.8x247 5.4kg", "p": 149.99, "tax": true, "n": "SRSP 6325 series is shorter than stock by design - saves weight"}, "SRSP 632556": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 62.8x247 5.6kg", "p": 149.99, "tax": true, "n": "SRSP 6325 series is shorter than stock by design - saves weight"}, "SRSP 632558": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 62.8x247 5.8kg", "p": 149.99, "tax": true, "n": "SRSP 6325 series is shorter than stock by design - saves weight"}, "SRSP 632560": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 62.8x247 6.0kg", "p": 149.99, "tax": true, "n": "SRSP 6325 series is shorter than stock by design - saves weight"}, "SRSP 632563": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 62.8x247 6.3kg", "p": 149.99, "tax": true, "n": "SRSP 6325 series is shorter than stock by design - saves weight"}, "SRSP 632566": {"g": "SHOCK", "c": "Shock Springs", "d": "SK SPR 62.8x247 6.6kg", "p": 149.99, "tax": true, "n": "SRSP 6325 series is shorter than stock by design - saves weight"}, "FRSP M324024": {"g": "FORK", "c": "Fork Springs", "d": "RT FK SPR 32.6x404 .24kg (pr)", "p": 199.99, "tax": true}, "FRSP M324026": {"g": "FORK", "c": "Fork Springs", "d": "RT FK SPR 32.6x404 .26kg (pr)", "p": 199.99, "tax": true}, "FRSP M324031": {"g": "FORK", "c": "Fork Springs", "d": "RT FK SPR 32.2x404 .31kg (pr)", "p": 199.99, "tax": true}, "FRSP M324033": {"g": "FORK", "c": "Fork Springs", "d": "RT FK SPR 32.6x404 .33kg (pr)", "p": 199.99, "tax": true}, "FRSP M324035": {"g": "FORK", "c": "Fork Springs", "d": "RT FK SPR 32.6x404 .35kg (pr)", "p": 199.99, "tax": true}, "FRSP M324038": {"g": "FORK", "c": "Fork Springs", "d": "RT FK SPR 32.6x404 .38kg (pr)", "p": 199.99, "tax": true}, "FRSP M324040": {"g": "FORK", "c": "Fork Springs", "d": "RT FK SPR 32.6x404 .40kg (pr)", "p": 199.99, "tax": true}, "FRSP M324042": {"g": "FORK", "c": "Fork Springs", "d": "RT FK SPR 32.6x404 .42kg (pr)", "p": 199.99, "tax": true}, "FRSP M324046": {"g": "FORK", "c": "Fork Springs", "d": "RT FK SPR 32.6x404 .46kg (pr)", "p": 199.99, "tax": true}, "FRSP M324051": {"g": "FORK", "c": "Fork Springs", "d": "RT FK SPR 32.6x404 .51kg (pr)", "p": 199.99, "tax": true}, "FRPSS-282114-140": {"g": "FORK", "c": "Pressure Springs", "d": "PRES SPR 28.2x114 1.4kg (single)", "p": 54.99, "tax": true}, "FRPSS-282114-180": {"g": "FORK", "c": "Pressure Springs", "d": "PRES SPR 28.2x114 1.8kg (single)", "p": 54.99, "tax": true}, "FRPSS-282114-220": {"g": "FORK", "c": "Pressure Springs", "d": "PRES SPR 28.2x114 2.2kg (single)", "p": 54.99, "tax": true}, "FRPSS-282114-260": {"g": "FORK", "c": "Pressure Springs", "d": "PRES SPR 28.2x114 2.6kg (single)", "p": 54.99, "tax": true}, "SPSC 47435030": {"g": "SHOCK", "c": "Shock Springs", "d": "Spring Adapter Collar 46.7x43.0x50.0x30L", "p": 29.99, "tax": true, "n": "REQUIRED to mount the SRSP 4814 spring - qty 1"}, "FSCS WC12100826": {"g": "FORK", "c": "Fork Springs", "d": "Fork Spring Conversion Kit - Stealth (air to coil)", "p": 549.99, "tax": true, "n": "AMA stock class legal, uses stock cap. Spring and Gold Valve sold separately"}, "FSCS W51150915": {"g": "FORK", "c": "Fork Springs", "d": "Fork Spring Conversion Kit (air to coil)", "p": 549.99, "tax": true, "n": "Not legal for AMA stock class. Spring and Gold Valve sold separately"}, "FSCS WC38050915": {"g": "FORK", "c": "Fork Springs", "d": "Fork Spring Conversion Kit - Stealth (air to coil)", "p": 549.99, "tax": true, "n": "AMA stock class legal, uses stock cap. Spring and Gold Valve sold separately"}, "FRSP 3857": {"g": "FORK", "c": "Fork Springs", "d": "Fork Spring Series for FSCS coil conversion (pair)", "p": 149.99, "tax": true, "n": "Series - rate list not published, confirm rate with Race Tech at order"}, "FRSP 4466": {"g": "FORK", "c": "Fork Springs", "d": "Fork Spring Series for FSCS coil conversion (pair)", "p": 109.99, "tax": true, "n": "Series - rate list not published, confirm rate with Race Tech at order"}, "FMGV 1920C": {"g": "FORK", "c": "Fork Valving", "d": "Fork Gold Valve Kit - Compression AND Rebound/Mid-Valve", "p": 339.99, "tax": true}, "FMGV 1921C": {"g": "FORK", "c": "Fork Valving", "d": "Fork Gold Valve Kit - Compression AND Rebound/Mid-Valve", "p": 199.99, "tax": true}, "FMGV 232303C": {"g": "FORK", "c": "Fork Valving", "d": "Fork Gold Valve Kit - Compression AND Rebound/Mid-Valve", "p": 199.99, "tax": true}, "FMGV 2752301C": {"g": "FORK", "c": "Fork Valving", "d": "Fork Gold Valve Kit - Compression AND Rebound/Mid-Valve", "p": 199.99, "tax": true}, "FMGV 343406C": {"g": "FORK", "c": "Fork Valving", "d": "Fork Gold Valve Kit - Compression AND Rebound/Mid-Valve", "p": 199.99, "tax": true}, "FMGV 343406PC": {"g": "FORK", "c": "Fork Valving", "d": "Fork Gold Valve Platinum Kit - steel alloy comp + rebound/mid", "p": 229.99, "tax": true, "n": "For extreme riding: SX, AX, Freestyle. Includes extra shims"}, "FACB M2910001 S": {"g": "FORK", "c": "Fork Valving", "d": "Adjustable Compression Bases (pair)", "p": 79.99, "tax": true, "n": "Creates effective external compression adjustment"}, "FPCH 0810003 S": {"g": "FORK", "c": "Fork Valving", "d": "Fork Compression Holders - LSV (pair)", "p": 69.99, "tax": true}, "SMGV 3501": {"g": "SHOCK", "c": "Shock Valving", "d": "Shock Gold Valve Kit (Next Gen Low Deflection)", "p": 199.99, "tax": true}, "SMGV 3502": {"g": "SHOCK", "c": "Shock Valving", "d": "Shock Gold Valve Kit (Next Gen Low Deflection)", "p": 199.99, "tax": true}, "SMGV 3610": {"g": "SHOCK", "c": "Shock Valving", "d": "Shock Gold Valve Kit (Next Gen Low Deflection)", "p": 199.99, "tax": true}, "SMGV 4603": {"g": "SHOCK", "c": "Shock Valving", "d": "Shock Gold Valve Kit (Next Gen Low Deflection)", "p": 199.99, "tax": true}, "SMRS 1210000": {"g": "SHOCK", "c": "Shock Valving", "d": "Rebound Separator Valve", "p": 59.99, "tax": true, "n": "Bleed must be drilled - see setup details for size"}, "SPNV 0512": {"g": "SHOCK", "c": "Shock Valving", "d": "Shock Nitrogen Charging Bolt", "p": 14.99, "tax": true, "n": "Good option for WP and non-rebuildable shocks. Requires TSNN 01 needle"}, "SHCV 2206PK": {"g": "SHOCK", "c": "Shock Valving", "d": "Shock Hi-Speed Comp Adjuster Shim Pack Series", "p": 19.99, "tax": true, "n": "Required for AX/SX/Freestyle. Requires Shock Gold Valve purchase"}, "SRPK 5001": {"g": "SHOCK", "c": "Shock Valving", "d": "Shock Pro Kit - External Bottom-out Strengthening Kit", "p": 99.99, "tax": true}, "SRBR 5801": {"g": "SHOCK", "c": "Shock Valving", "d": "Shock Body Support Ring - strengthens shock body", "p": 69.99, "tax": true, "n": "Not legal for AMA stock class"}, "FMBO 37122 P": {"g": "FORK", "c": "Fork Maintenance", "d": "Outer Fork Bushings (pair)", "p": 49.99, "tax": true}, "FSOS 37 P": {"g": "FORK", "c": "Fork Maintenance", "d": "Fork Seals (pair)", "p": 21.98, "tax": true}, "FSDS 3750 P": {"g": "FORK", "c": "Fork Maintenance", "d": "Fork Dust Seals (pair)", "p": 19.98, "tax": true}, "FMBI 35151 P": {"g": "FORK", "c": "Fork Maintenance", "d": "Inner Fork Bushings (pair)", "p": 25.98, "tax": true}, "FMBO 351515 P": {"g": "FORK", "c": "Fork Maintenance", "d": "Outer Fork Bushings (pair)", "p": 35.99, "tax": true}, "FWOS 354608 P": {"g": "FORK", "c": "Fork Maintenance", "d": "Fork Seals (pair)", "p": 44.99, "tax": true}, "FWDS 35 P": {"g": "FORK", "c": "Fork Maintenance", "d": "Fork Dust Seals (pair)", "p": 44.99, "tax": true}, "FMBI 43201 P": {"g": "FORK", "c": "Fork Maintenance", "d": "Inner Fork Bushings (pair)", "p": 29.99, "tax": true}, "FMBO 43122 P": {"g": "FORK", "c": "Fork Maintenance", "d": "Outer Fork Bushings (pair)", "p": 34.99, "tax": true}, "FWOS 43 P": {"g": "FORK", "c": "Fork Maintenance", "d": "Fork Seals (pair)", "p": 45.99, "tax": true}, "FWDS 43 P": {"g": "FORK", "c": "Fork Maintenance", "d": "Fork Dust Seals (pair)", "p": 53.99, "tax": true}, "FMBI 48201 P": {"g": "FORK", "c": "Fork Maintenance", "d": "Inner Fork Bushings (pair)", "p": 39.98, "tax": true}, "FMBO 48122 P": {"g": "FORK", "c": "Fork Maintenance", "d": "Outer Fork Bushings (pair)", "p": 39.98, "tax": true}, "FWOS 48 P": {"g": "FORK", "c": "Fork Maintenance", "d": "Fork Seals (pair)", "p": 39.99, "tax": true}, "FWDS 48 P": {"g": "FORK", "c": "Fork Maintenance", "d": "Fork Dust Seals (pair)", "p": 39.99, "tax": true}, "SMSQ 14": {"g": "SHOCK", "c": "Shock Maintenance", "d": "Shock Low Friction Oil Seal (each)", "p": 8.99, "tax": true, "n": "Individual - set preferred if available"}, "SSOS 14": {"g": "SHOCK", "c": "Shock Maintenance", "d": "Shock Low Friction Oil Seal (each)", "p": 29.99, "tax": true, "n": "Individual - set preferred if available"}, "SSOS 18": {"g": "SHOCK", "c": "Shock Maintenance", "d": "Shock Low Friction Oil Seal (each)", "p": 29.99, "tax": true, "n": "Individual - set preferred if available"}, "SWDS 1802": {"g": "SHOCK", "c": "Shock Maintenance", "d": "Shock Low Friction Dust Seal (each)", "p": 22.49, "tax": true, "n": "Individual - set preferred if available"}, "SMSB 1410": {"g": "SHOCK", "c": "Shock Maintenance", "d": "Shock Shaft Bushing (each)", "p": 9.99, "tax": true}, "SMSB 1412": {"g": "SHOCK", "c": "Shock Maintenance", "d": "Shock Shaft Bushing (each)", "p": 9.99, "tax": true}, "SMSB 1812": {"g": "SHOCK", "c": "Shock Maintenance", "d": "Shock Shaft Bushing (each)", "p": 12.99, "tax": true}, "ZWP 36120427": {"g": "SHOCK", "c": "Shock Maintenance", "d": "Bottom-Out Bumper (each)", "p": 43.55, "tax": true, "n": "Wears out in about 3 months"}, "ZWP 36120799": {"g": "SHOCK", "c": "Shock Maintenance", "d": "Bottom-Out Bumper (each)", "p": 15.17, "tax": true, "n": "Wears out in about 3 months"}, "ZWP 46181237": {"g": "SHOCK", "c": "Shock Maintenance", "d": "Bottom-Out Bumper (each)", "p": 22.76, "tax": true, "n": "Wears out in about 3 months"}, "SWBO 185846": {"g": "SHOCK", "c": "Shock Maintenance", "d": "Bottom-Out Bumper (each)", "p": 49.99, "tax": true, "n": "Wears out in about 3 months"}, "SWBL 5207": {"g": "SHOCK", "c": "Shock Maintenance", "d": "Reservoir Bladder Conversion Kit (each)", "p": 154.99, "tax": true, "n": "Converts piston style to bladder. Not AMA stock legal"}, "SWBL 6002": {"g": "SHOCK", "c": "Shock Maintenance", "d": "Reservoir Bladder Conversion Kit (each)", "p": 189.99, "tax": true, "n": "Converts piston style to bladder. Not AMA stock legal"}, "RSDKT 04PRNN": {"g": "SHOCK", "c": "Complete Shocks", "d": "G3-S Piggyback Reservoir Rear Shock", "p": 1099.99, "tax": true, "n": "Rebound adjust. No ride height, no hydraulic preload"}, "FTHD 1541": {"g": "FORK", "c": "Holeshot Device", "d": "RT Holeshot Device - Double Button by Tamer", "p": 139.98, "tax": true}, "FTHD 2511": {"g": "FORK", "c": "Holeshot Device", "d": "RT Holeshot Device - Double Button by Tamer", "p": 139.98, "tax": true}, "FTHD 2521": {"g": "FORK", "c": "Holeshot Device", "d": "RT Holeshot Device - Double Button by Tamer", "p": 139.98, "tax": true}, "FTHD 3601": {"g": "FORK", "c": "Holeshot Device", "d": "RT Holeshot Device - Double Button by Tamer", "p": 139.98, "tax": true}, "FTHD FGB401": {"g": "FORK", "c": "Holeshot Device", "d": "Holeshot Support Strengthening Bracket", "p": 24.98, "tax": true}, "FTHD FGB404": {"g": "FORK", "c": "Holeshot Device", "d": "Holeshot Support Strengthening Bracket", "p": 44.98, "tax": true}, "FTHD FGB408": {"g": "FORK", "c": "Holeshot Device", "d": "Holeshot Support Strengthening Bracket", "p": 24.98, "tax": true}, "B99-FRB": {"g": "LABOR", "c": "B99 Labor", "d": "Fork Rebuild - Labor (B99)", "p": 175.0, "tax": false, "n": "B99 bench rate - edit this price to your own"}, "B99-SHRB": {"g": "LABOR", "c": "B99 Labor", "d": "Shock Rebuild - Labor (B99)", "p": 150.0, "tax": false, "n": "B99 bench rate - edit this price to your own"}, "B99-FRV": {"g": "LABOR", "c": "B99 Labor", "d": "Fork Revalve - Labor (B99)", "p": 200.0, "tax": false, "n": "B99 bench rate - edit this price to your own"}, "B99-SHRV": {"g": "LABOR", "c": "B99 Labor", "d": "Shock Revalve - Labor (B99)", "p": 200.0, "tax": false, "n": "B99 bench rate - edit this price to your own"}}, "universal": ["B99-FRB", "B99-SHRB", "B99-FRV", "B99-SHRV", "TFSD 50", "TFCW 4650", "TFCT 451919", "TFSH 10", "TFSH 20", "TFHP 01", "TFOL 02", "TFGC 500", "LDFORB2", "LDFORV2", "TSCP 01", "TFSH 14", "TSSC 01", "TSPA 01", "TSPW 246785", "TSSB 1612", "TSBD SET", "TSSS 01", "TSNG 02", "TSCA 21", "TSCT 01", "TSSM 01", "TSVM 01", "LDSHRB1", "LDSHRV1", "L4DCH FP014", "L4DCH PP014", "L4DCHVJ514", "L4DCHVJ314", "L4DCHRB014", "L4DCYDEC10", "L4DCYHON10", "L4DCHVBC11", "L4DCHIS011", "L4DCHIG011", "L4DCRRBT10"], "models": [{"id": "2026-honda-crf250r", "year": 2026, "make": "Honda", "model": "CRF250R", "label": "2026 Honda CRF250R", "fork": "Showa 49U Twin Chamber", "shock": "Showa 50mm Piggyback", "setup": [["Fork Brand / Size / Type", "Showa 49U Twin Chamber"], ["Shock Brand / Body Dia.", "Showa 50mm Piggyback"], ["Front Oil", "USF05 (5wt)"], ["Fork Oil Level", "370 cc"], ["Spring Side", "BOTH"], ["Fork Spring Rate (stock)", "0.49 kg/mm"], ["Fork Spring Preload", "5 mm"], ["Fork Height Above Clamp", "3 mm"], ["Rear Oil", "US1"], ["Nitrogen Pressure", "165 psi"], ["Shock Spring Rate (stock)", "5.1 kg/mm"], ["Shock Spring Preload", "5 mm"], ["Rear Sag", "103 mm"]], "notes": "Fork comments from Race Tech: damping rods commonly wear through the coating and leak (replacements available). Stock fork spring is 502mm long, creating too much preload - RT recommends 492mm. Stock pressure spring is 107mm long - RT recommends 100mm.", "parts": ["FRSP 454938", "FRSP 454940", "FRSP 454942", "FRSP 454943", "FRSP 454944", "FRSP 454945", "FRSP 454946", "FRSP 454947", "FRSP 454948", "FRSP 454949", "FRSP 454950", "FRSP 454951", "FRSP 454952", "FRSP 454953", "FRSP 454954", "FRSP 454955", "FRSP 454956", "FRSP 454957", "FRSP 454958", "FRSS-294680-P", "FRPSP-278099-140", "FRPSP-278099-180", "FRPSP-278099-220", "FRPSP-278099-260", "FMGV 392501C", "FMGV 392501PC", "USF05", "FSOS 49 P", "FSDS 49 P", "FMBI 49201 P", "FMBO 491515 P", "FPRR 140403 P", "FSTC CS1424", "FPLS 145210025 P", "FRSP M4547", "FPLS 145210038 P", "FRSP MA4545", "FPLS 145210050 P", "FRSP M4544", "FRSP MA4542", "FPLS 145210100 P", "FRSP M4537", "FTHD 2531", "FTHD FGB403", "SRSP 672446", "SRSP 672448", "SRSP 672450", "SRSP 672452", "SRSP 672454", "SRSP 672456", "SRSP 672458", "SRSP 672460", "SRSP 672463", "SRSP 672466", "SMPC 6015066", "SMGV 5003", "SHCV 2306PK", "SMRS 1212500", "US1", "SSOS 16S", "SSOS 16", "SSDS 16", "SMSB 1614", "SSBO 165357", "SSBL 485105", "SMRC 48501", "SPLS 16", "SMSP 6420", "SPSC 63606525"]}, {"id": "2026-cobra-cx50jr", "year": 2026, "make": "Cobra", "model": "CX50JR", "label": "2026 Cobra CX50JR", "fork": "CARD 32U Open Cartridge, internal top-out", "shock": "CARD 35 mm", "setup": [["Fork Brand / Size / Type", "CARD 32U Open Cartridge, internal top-out"], ["Shock Brand / Body Dia.", "CARD 35 mm (new longer swingarm for 2026)"], ["Front Oil", "USF05 (5wt)"], ["Rear Oil", "US1"], ["Fork Spring Rate (stock)", "0.26 kg/mm"], ["Shock Spring Rate (stock)", "5.1 kg/mm"], ["Fork Spring Series", "call Race Tech"], ["Shock Spring Series", "SRSP 4814"]], "notes": "Race Tech publishes no optional fork spring series for this fitment - the sheet says call. Shock springs are listed below.", "parts": ["FMGV 1921C", "SMGV 3502", "FTHD 1541", "SMRS 1212500", "USF05", "US1", "SMSQ 14", "SMSB 1412", "FTHD FGB408", "SRSP 4814013", "SRSP 4814018", "SRSP 4814022", "SRSP 4814027", "SRSP 4814031", "SRSP 4814035", "SRSP 4814040", "SRSP 4814045", "SRSP 4814049", "SRSP 4814054", "SRSP 4814063", "SRSP 4814072", "SRSP 4814080", "SRSP 4814107", "SRSP 4814116", "SRSP 4814125"]}, {"id": "2026-cobra-cx50jr-dcm", "year": 2026, "make": "Cobra", "model": "CX50JR Dual Cartridge Mod", "label": "2026 Cobra CX50JR Dual Cartridge Mod", "fork": "CARD 32U Open Cartridge, internal top-out", "shock": "CARD 35 mm", "setup": [["Fork Brand / Size / Type", "CARD 32U Open Cartridge, internal top-out"], ["Shock Brand / Body Dia.", "CARD 35 mm (new longer swingarm for 2026)"], ["Front Oil", "USF05 (5wt)"], ["Rear Oil", "US1"], ["Fork Spring Rate (stock)", "0.26 kg/mm"], ["Shock Spring Rate (stock)", "5.1 kg/mm"], ["Fork Spring Series", "call Race Tech"], ["Shock Spring Series", "SRSP 4814"]], "notes": "Race Tech publishes no optional fork spring series for this fitment - the sheet says call. Shock springs are listed below.", "parts": ["FMGV 1920C", "SMGV 3502", "FTHD 2511", "SMRS 1212500", "USF05", "US1", "SMSQ 14", "SMSB 1412", "FTHD FGB408", "SRSP 4814013", "SRSP 4814018", "SRSP 4814022", "SRSP 4814027", "SRSP 4814031", "SRSP 4814035", "SRSP 4814040", "SRSP 4814045", "SRSP 4814049", "SRSP 4814054", "SRSP 4814063", "SRSP 4814072", "SRSP 4814080", "SRSP 4814107", "SRSP 4814116", "SRSP 4814125"]}, {"id": "2026-cobra-cx50sr", "year": 2026, "make": "Cobra", "model": "CX50SR", "label": "2026 Cobra CX50SR", "fork": "CARD 32U Open Cartridge, internal top-out", "shock": "CARD 35 mm", "setup": [["Fork Brand / Size / Type", "CARD 32U Open Cartridge, internal top-out"], ["Shock Brand / Body Dia.", "CARD 35 mm"], ["Front Oil", "USF05 (5wt)"], ["Rear Oil", "US1"], ["Fork Spring Rate (stock)", "0.25 kg/mm"], ["Shock Spring Rate (stock)", "3.1 kg/mm"], ["Fork Spring Series", "call Race Tech"], ["Shock Spring Series", "SRSP 4814 + SPSC 47435030 collar"]], "notes": "Race Tech publishes no optional fork spring series for this fitment - the sheet says call. Shock springs are listed below. 12mm max preload. Spring adapter collar is required.", "parts": ["FMGV 1921C", "SMGV 3501", "FTHD 1541", "SPSC 47435030", "SMRS 1212500", "USF05", "US1", "SMSQ 14", "SMSB 1412", "FTHD FGB408", "SRSP 4814013", "SRSP 4814018", "SRSP 4814022", "SRSP 4814027", "SRSP 4814031", "SRSP 4814035", "SRSP 4814040", "SRSP 4814045", "SRSP 4814049", "SRSP 4814054", "SRSP 4814063", "SRSP 4814072", "SRSP 4814080", "SRSP 4814107", "SRSP 4814116", "SRSP 4814125"]}, {"id": "2026-cobra-cx50sr-dcm", "year": 2026, "make": "Cobra", "model": "CX50SR Dual Cartridge Mod", "label": "2026 Cobra CX50SR Dual Cartridge Mod", "fork": "CARD 32U Open Cartridge, internal top-out", "shock": "CARD 35 mm", "setup": [["Fork Brand / Size / Type", "CARD 32U Open Cartridge, internal top-out"], ["Shock Brand / Body Dia.", "CARD 35 mm"], ["Front Oil", "USF05 (5wt)"], ["Rear Oil", "US1"], ["Fork Spring Rate (stock)", "0.25 kg/mm"], ["Shock Spring Rate (stock)", "3.1 kg/mm"], ["Fork Spring Series", "call Race Tech"], ["Shock Spring Series", "SRSP 4814 + SPSC 47435030 collar"]], "notes": "Race Tech publishes no optional fork spring series for this fitment - the sheet says call. Shock springs are listed below. 12mm max preload. Spring adapter collar is required.", "parts": ["FMGV 1920C", "SMGV 3501", "FTHD 2511", "SPSC 47435030", "SMRS 1212500", "USF05", "US1", "SMSQ 14", "SMSB 1412", "FTHD FGB408", "SRSP 4814013", "SRSP 4814018", "SRSP 4814022", "SRSP 4814027", "SRSP 4814031", "SRSP 4814035", "SRSP 4814040", "SRSP 4814045", "SRSP 4814049", "SRSP 4814054", "SRSP 4814063", "SRSP 4814072", "SRSP 4814080", "SRSP 4814107", "SRSP 4814116", "SRSP 4814125"]}, {"id": "2026-cobra-cx50fwe", "year": 2026, "make": "Cobra", "model": "CX50FWE", "label": "2026 Cobra CX50FWE", "fork": "CARD 32U Open Cartridge, internal top-out", "shock": "CARD 35 mm", "setup": [["Fork Brand / Size / Type", "CARD 32U Open Cartridge, internal top-out"], ["Shock Brand / Body Dia.", "CARD 35 mm"], ["Front Oil", "USF05 (5wt)"], ["Rear Oil", "US1"], ["Fork Spring Rate (stock)", "0.25 kg/mm"], ["Shock Spring Rate (stock)", "3.1 kg/mm"], ["Fork Spring Series", "call Race Tech"], ["Shock Spring Series", "SRSP 4814 + SPSC 47435030 collar"]], "notes": "Race Tech publishes no optional fork spring series for this fitment - the sheet says call. Shock springs are listed below. 12mm max preload. Spring adapter collar is required.", "parts": ["FMGV 1921C", "SMGV 3501", "FTHD 1541", "SPSC 47435030", "SMRS 1212500", "USF05", "US1", "SMSQ 14", "SMSB 1412", "FTHD FGB408", "SRSP 4814013", "SRSP 4814018", "SRSP 4814022", "SRSP 4814027", "SRSP 4814031", "SRSP 4814035", "SRSP 4814040", "SRSP 4814045", "SRSP 4814049", "SRSP 4814054", "SRSP 4814063", "SRSP 4814072", "SRSP 4814080", "SRSP 4814107", "SRSP 4814116", "SRSP 4814125"]}, {"id": "2026-cobra-cx50fwe-dcm", "year": 2026, "make": "Cobra", "model": "CX50FWE Dual Cartridge Mod", "label": "2026 Cobra CX50FWE Dual Cartridge Mod", "fork": "CARD 32U Open Cartridge, internal top-out", "shock": "CARD 35 mm", "setup": [["Fork Brand / Size / Type", "CARD 32U Open Cartridge, internal top-out"], ["Shock Brand / Body Dia.", "CARD 35 mm"], ["Front Oil", "USF05 (5wt)"], ["Rear Oil", "US1"], ["Fork Spring Rate (stock)", "0.25 kg/mm"], ["Shock Spring Rate (stock)", "3.1 kg/mm"], ["Fork Spring Series", "call Race Tech"], ["Shock Spring Series", "SRSP 4814 + SPSC 47435030 collar"]], "notes": "Race Tech publishes no optional fork spring series for this fitment - the sheet says call. Shock springs are listed below. 12mm max preload. Spring adapter collar is required.", "parts": ["FMGV 1920C", "SMGV 3501", "FTHD 2511", "SPSC 47435030", "SMRS 1212500", "USF05", "US1", "SMSQ 14", "SMSB 1412", "FTHD FGB408", "SRSP 4814013", "SRSP 4814018", "SRSP 4814022", "SRSP 4814027", "SRSP 4814031", "SRSP 4814035", "SRSP 4814040", "SRSP 4814045", "SRSP 4814049", "SRSP 4814054", "SRSP 4814063", "SRSP 4814072", "SRSP 4814080", "SRSP 4814107", "SRSP 4814116", "SRSP 4814125"]}, {"id": "2026-cobra-cx65", "year": 2026, "make": "Cobra", "model": "CX65", "label": "2026 Cobra CX65", "fork": "CARD 37U Open Cartridge, internal top-out", "shock": "CARD 35 mm", "setup": [["Fork Brand / Size / Type", "CARD 37U Open Cartridge, internal top-out"], ["Shock Brand / Body Dia.", "CARD 35 mm"], ["Front Oil", "USF05 (5wt)"], ["Rear Oil", "US1"], ["Fork Spring Rate (stock)", "0.26 kg/mm"], ["Shock Spring Rate (stock)", "5.0 kg/mm"], ["Fork Spring Series", "FRSP M3240"], ["Shock Spring Series", "SRSP 4821P"]], "notes": "Use the Race Tech included nut, or the RT DVS rebound separator bleed.", "parts": ["FMGV 1921C", "SMGV 3501", "SMRS 1212500", "USF05", "US1", "FMBO 37122 P", "FSOS 37 P", "FSDS 3750 P", "SMSQ 14", "SMSB 1410", "FTHD 2511", "FTHD FGB408", "FRSP M324024", "FRSP M324026", "FRSP M324031", "FRSP M324033", "FRSP M324035", "FRSP M324038", "FRSP M324040", "FRSP M324042", "FRSP M324046", "FRSP M324051", "SRSP 4821P15", "SRSP 4821P20", "SRSP 4821P25", "SRSP 4821P30", "SRSP 4821P35"]}, {"id": "2026-cobra-cx65-dcm", "year": 2026, "make": "Cobra", "model": "CX65 Dual Cartridge Mod", "label": "2026 Cobra CX65 Dual Cartridge Mod", "fork": "CARD 37U Open Cartridge, internal top-out", "shock": "CARD 35 mm", "setup": [["Fork Brand / Size / Type", "CARD 37U Open Cartridge, internal top-out"], ["Shock Brand / Body Dia.", "CARD 35 mm"], ["Front Oil", "USF05 (5wt)"], ["Rear Oil", "US1"], ["Fork Spring Rate (stock)", "0.26 kg/mm"], ["Shock Spring Rate (stock)", "5.0 kg/mm"], ["Fork Spring Series", "FRSP M3240"], ["Shock Spring Series", "SRSP 4821P"]], "notes": "Use the Race Tech included nut, or the RT DVS rebound separator bleed.", "parts": ["FMGV 1920C", "SMGV 3501", "SMRS 1212500", "USF05", "US1", "FMBO 37122 P", "FSOS 37 P", "FSDS 3750 P", "SMSQ 14", "SMSB 1410", "FTHD 2511", "FTHD FGB408", "FRSP M324024", "FRSP M324026", "FRSP M324031", "FRSP M324033", "FRSP M324035", "FRSP M324038", "FRSP M324040", "FRSP M324042", "FRSP M324046", "FRSP M324051", "SRSP 4821P15", "SRSP 4821P20", "SRSP 4821P25", "SRSP 4821P30", "SRSP 4821P35"]}, {"id": "2026-ktm-50sx", "year": 2026, "make": "KTM", "model": "50SX", "label": "2026 KTM 50SX", "fork": "WP 35U AER SFF XACT + coil", "shock": "WP 36 mm XACT PDS (2024-on)", "setup": [["Fork Brand / Size / Type", "WP 35U AER SFF XACT + coil"], ["Shock Brand / Body Dia.", "WP 36 mm XACT PDS (2024-on)"], ["Front Oil", "USF05 (5wt)"], ["Rear Oil", "US1"], ["Fork Spring Rate (stock)", "Air + 0.21 kg coil"], ["Shock Spring Rate (stock)", "3.1 kg/mm"], ["Fork Spring Series", "air fork - none"], ["Shock Spring Series", "SRSP 4814"]], "notes": "Air fork - no optional coil spring series is published. Use SPNV 0512 with a TSNN 01 needle to charge nitrogen.", "parts": ["FMGV 232303C", "SMGV 3610", "SMSB 1410", "ZWP 36120427", "SPNV 0512", "USF05", "US1", "FMBI 35151 P", "FMBO 351515 P", "FWOS 354608 P", "FWDS 35 P", "SSOS 14", "FTHD 2521", "SRSP 4814013", "SRSP 4814018", "SRSP 4814022", "SRSP 4814027", "SRSP 4814031", "SRSP 4814035", "SRSP 4814040", "SRSP 4814045", "SRSP 4814049", "SRSP 4814054", "SRSP 4814063", "SRSP 4814072", "SRSP 4814080", "SRSP 4814107", "SRSP 4814116", "SRSP 4814125"]}, {"id": "2026-ktm-50sx-fe", "year": 2026, "make": "KTM", "model": "50SX Factory Edition", "label": "2026 KTM 50SX Factory Edition", "fork": "WP 35U AER SFF XACT + coil", "shock": "WP 36 mm XACT PDS (2024-on)", "setup": [["Fork Brand / Size / Type", "WP 35U AER SFF XACT + coil"], ["Shock Brand / Body Dia.", "WP 36 mm XACT PDS (2024-on)"], ["Front Oil", "USF05 (5wt)"], ["Rear Oil", "US1"], ["Fork Spring Rate (stock)", "Air + 0.21 kg coil"], ["Shock Spring Rate (stock)", "3.1 kg/mm"], ["Fork Spring Series", "air fork - none"], ["Shock Spring Series", "SRSP 4814"]], "notes": "Air fork - no optional coil spring series is published. Use SPNV 0512 with a TSNN 01 needle to charge nitrogen.", "parts": ["FMGV 232303C", "SMGV 3610", "SMSB 1410", "ZWP 36120427", "SPNV 0512", "USF05", "US1", "FMBI 35151 P", "FMBO 351515 P", "FWOS 354608 P", "FWDS 35 P", "SSOS 14", "FTHD 2521", "SRSP 4814013", "SRSP 4814018", "SRSP 4814022", "SRSP 4814027", "SRSP 4814031", "SRSP 4814035", "SRSP 4814040", "SRSP 4814045", "SRSP 4814049", "SRSP 4814054", "SRSP 4814063", "SRSP 4814072", "SRSP 4814080", "SRSP 4814107", "SRSP 4814116", "SRSP 4814125"]}, {"id": "2026-ktm-65sx", "year": 2026, "make": "KTM", "model": "65SX", "label": "2026 KTM 65SX", "fork": "WP 35U AER SFF XACT + coil", "shock": "WP 36 mm XACT PDS (2024-on)", "setup": [["Fork Brand / Size / Type", "WP 35U AER SFF XACT + coil"], ["Shock Brand / Body Dia.", "WP 36 mm XACT PDS (2024-on)"], ["Front Oil", "USF05 (5wt)"], ["Rear Oil", "US1"], ["Fork Spring Rate (stock)", "Air + 0.28 kg coil"], ["Shock Spring Rate (stock)", "4.6 kg/mm"], ["Fork Spring Series", "air fork - none"], ["Shock Spring Series", "SRSP 4819P"]], "notes": "Do NOT use the included 3mm lowering spacer. Use SPNV 0512 with a TSNN 01 needle to charge nitrogen.", "parts": ["FMGV 232303C", "SMGV 3610", "SMSB 1412", "ZWP 36120799", "RSDKT 04PRNN", "SPNV 0512", "USF05", "US1", "FMBI 35151 P", "FMBO 351515 P", "FWOS 354608 P", "FWDS 35 P", "SSOS 14", "FTHD 2521", "SRSP 4819P15", "SRSP 4819P20", "SRSP 4819P25", "SRSP 4819P30"]}, {"id": "2026-ktm-85sx-1714", "year": 2026, "make": "KTM", "model": "85SX 17-14", "label": "2026 KTM 85SX 17-14", "fork": "WP 43U AER SFF Open Cartridge", "shock": "WP 46 mm XPLOR PDS", "setup": [["Fork Brand / Size / Type", "WP 43U AER SFF Open Cartridge"], ["Shock Brand / Body Dia.", "WP 46 mm XPLOR PDS"], ["Front Oil", "USF05 (5wt)"], ["Rear Oil", "US1"], ["Fork Spring Rate (stock)", "Air"], ["Shock Spring Rate (stock)", "4.6 kg/mm"], ["Fork Spring Series", "FRSP 3857 (needs FSCS conversion)"], ["Shock Spring Series", "SRSP 6023P"]], "notes": "Air fork - coil springs require the FSCS conversion kit. Oil level is set with the gap between inner and outer fork tube empty.", "parts": ["FMGV 2752301C", "SMGV 4603", "FACB M2910001 S", "SPNV 0512", "USF05", "US1", "FMBI 43201 P", "FMBO 43122 P", "FWOS 43 P", "FWDS 43 P", "SSOS 18", "SWDS 1802", "SMSB 1812", "ZWP 46181237", "SWBL 5207", "FTHD 2511", "FTHD FGB401", "FSCS WC12100826", "FRSP 3857", "SRSP 6023P10", "SRSP 6023P15", "SRSP 6023P20", "SRSP 6023P25", "SRSP 6023P30", "SRSP 6023P35", "SRSP 6023P40", "SRSP 6023P45", "SRSP 6023P50", "SRSP 6023P55", "SRSP 6023P60", "SRSP 6023P65", "SRSP 6023P70", "SRSP 6023P75"]}, {"id": "2026-ktm-85sx-1916", "year": 2026, "make": "KTM", "model": "85SX 19-16", "label": "2026 KTM 85SX 19-16", "fork": "WP 43U AER SFF Open Cartridge", "shock": "WP 46 mm XPLOR PDS", "setup": [["Fork Brand / Size / Type", "WP 43U AER SFF Open Cartridge"], ["Shock Brand / Body Dia.", "WP 46 mm XPLOR PDS"], ["Front Oil", "USF05 (5wt)"], ["Rear Oil", "US1"], ["Fork Spring Rate (stock)", "Air"], ["Shock Spring Rate (stock)", "4.6 kg/mm"], ["Fork Spring Series", "FRSP 3857 (needs FSCS conversion)"], ["Shock Spring Series", "SRSP 6023P"]], "notes": "Air fork - coil springs require the FSCS conversion kit. Oil level is set with the gap between inner and outer fork tube empty.", "parts": ["FMGV 2752301C", "SMGV 4603", "FACB M2910001 S", "SPNV 0512", "USF05", "US1", "FMBI 43201 P", "FMBO 43122 P", "FWOS 43 P", "FWDS 43 P", "SSOS 18", "SWDS 1802", "SMSB 1812", "ZWP 46181237", "SWBL 5207", "FTHD 2511", "FTHD FGB401", "FSCS WC12100826", "FRSP 3857", "SRSP 6023P10", "SRSP 6023P15", "SRSP 6023P20", "SRSP 6023P25", "SRSP 6023P30", "SRSP 6023P35", "SRSP 6023P40", "SRSP 6023P45", "SRSP 6023P50", "SRSP 6023P55", "SRSP 6023P60", "SRSP 6023P65", "SRSP 6023P70", "SRSP 6023P75"]}, {"id": "2026-ktm-125sx", "year": 2026, "make": "KTM", "model": "125SX", "label": "2026 KTM 125SX", "fork": "WP 48U AER SFF Closed Cartridge, trampoline mid-valve", "shock": "WP 50 mm (2022-on RE/FE)", "setup": [["Fork Brand / Size / Type", "WP 48U AER SFF Closed Cartridge, trampoline mid-valve"], ["Shock Brand / Body Dia.", "WP 50 mm (2022-on RE/FE)"], ["Front Oil", "USF05 (5wt)"], ["Rear Oil", "US1"], ["Fork Spring Rate (stock)", "Air"], ["Shock Spring Rate (stock)", "4.0 kg/mm"], ["Fork Spring Series", "FRSP 4466 (needs FSCS conversion)"], ["Shock Spring Series", "SRSP 6325"]], "notes": "AER fork - check pressure every ride. Coil conversion available, Stealth version is AMA stock legal. RT oil volume differs from OEM.", "parts": ["FMGV 343406C", "FMGV 343406PC", "FPCH 0810003 S", "SMGV 5003", "SHCV 2206PK", "SMRS 1210000", "SPNV 0512", "SRPK 5001", "SRBR 5801", "USF05", "US1", "FMBI 48201 P", "FMBO 48122 P", "FWOS 48 P", "FWDS 48 P", "SSOS 18", "SWDS 1802", "SMSB 1812", "SWBO 185846", "SWBL 6002", "FTHD 3601", "FTHD FGB404", "FSCS W51150915", "FSCS WC38050915", "FRSP 4466", "FRPSS-282114-140", "FRPSS-282114-180", "FRPSS-282114-220", "FRPSS-282114-260", "SRSP 632536", "SRSP 632538", "SRSP 632540", "SRSP 632542", "SRSP 632544", "SRSP 632546", "SRSP 632548", "SRSP 632550", "SRSP 632552", "SRSP 632554", "SRSP 632556", "SRSP 632558", "SRSP 632560", "SRSP 632563", "SRSP 632566"]}]};
+let CAT = EMBEDDED;
+
+const $ = id => document.getElementById(id);
+const money = n => '$' + (Math.round(n*100)/100).toLocaleString('en-US',
+  {minimumFractionDigits:2, maximumFractionDigits:2});
+const mem = {};
+const store = {
+  get(k){ try{ return localStorage.getItem(k); }catch(e){ return k in mem ? mem[k] : null; } },
+  set(k,v){ try{ localStorage.setItem(k,v); }catch(e){ mem[k]=v; } }
+};
+
+let lines = [], activeCat = 'All', model = null, hiddenCats = new Set(), seq = 1000;
+
+(async function boot(){
+  try{
+    const r = await fetch('catalog.json', {cache:'no-store'});
+    if(r.ok){
+      const j = await r.json();
+      if(j && j.parts && j.models && j.models.length) CAT = j;
+    }
+  }catch(e){ /* file:// or offline - the embedded copy covers it */ }
+  init();
+})();
+
+function init(){
+  hiddenCats = new Set(CAT.categories.filter(c => c.hidden).map(c => c.name));
+  if(CAT.brand && CAT.brand.taxRate != null) $('taxRate').value = CAT.brand.taxRate;
+
+  $('bike').innerHTML = CAT.models.slice()
+    .sort((a,b) => (b.year - a.year) || a.make.localeCompare(b.make) || a.model.localeCompare(b.model))
+    .map(m => '<option value="' + m.id + '">' + m.label + '</option>').join('');
+
+  const saved = store.get('b99_bike');
+  if(saved && CAT.models.some(m => m.id === saved)) $('bike').value = saved;
+  $('bike').addEventListener('change', () => selectBike($('bike').value));
+  selectBike($('bike').value);
+
+  seq = parseInt(store.get('b99_seq') || '1000', 10);
+  stampInv();
+  $('ver').textContent = 'catalog ' + (CAT.generated || '?') + ' \u00b7 ' +
+    Object.keys(CAT.parts).length + ' parts \u00b7 ' + CAT.models.length +
+    (CAT.models.length === 1 ? ' bike' : ' bikes');
+  render();
+}
+
+function catOrder(name){
+  const c = CAT.categories.find(x => x.name === name);
+  return c ? c.order : 999;
+}
+function visibleParts(){
+  const pns = [...new Set([...(model.parts || []), ...(CAT.universal || [])])];
+  return pns.filter(pn => CAT.parts[pn] && !hiddenCats.has(CAT.parts[pn].c))
+    .map(pn => Object.assign({pn}, CAT.parts[pn]))
+    .sort((a,b) => catOrder(a.c) - catOrder(b.c) || a.d.localeCompare(b.d));
+}
+function selectBike(id){
+  model = CAT.models.find(m => m.id === id) || CAT.models[0];
+  store.set('b99_bike', model.id);
+  $('cBike').value = model.label;
+  $('specs').innerHTML =
+    (model.fork  ? '<div class="spec">Fork <b>'  + model.fork  + '</b></div>' : '') +
+    (model.shock ? '<div class="spec">Shock <b>' + model.shock + '</b></div>' : '');
+  const cats = ['All', ...new Set(visibleParts().map(p => p.c))];
+  if(!cats.includes(activeCat)) activeCat = 'All';
+  $('cats').innerHTML = cats.map(c =>
+    '<button class="cat" data-c="' + c + '" aria-pressed="' + (c === activeCat) + '">' + c + '</button>').join('');
+  renderList();
+  if(lines.length) toast('Switched to ' + model.label + ' \u2014 ticket kept');
+}
+$('cats').addEventListener('click', e => {
+  const b = e.target.closest('.cat'); if(!b) return;
+  activeCat = b.dataset.c;
+  [...document.querySelectorAll('.cat')].forEach(x => x.setAttribute('aria-pressed', x === b));
+  renderList();
+});
+
+
+function matches(p, q){
+  if(!q) return true;
+  const hay = (p.pn + ' ' + p.d + ' ' + p.c + ' ' + (p.n || '')).toLowerCase();
+  return q.toLowerCase().split(/\s+/).every(t => hay.indexOf(t) !== -1);
+}
+function renderList(){
+  const q = $('q').value.trim();
+  const rows = visibleParts().filter(p => (activeCat === 'All' || p.c === activeCat) && matches(p, q));
+  $('partsLabel').textContent = q ? 'Matches (' + rows.length + ')'
+    : (activeCat === 'All' ? 'All parts \u2014 ' + model.label : activeCat);
+  if(!rows.length){
+    $('list').innerHTML = '<div class="empty"><b>No match for &ldquo;' + q + '&rdquo;</b>' +
+      'Try a shorter word, or clear the category filter.</div>';
+    return;
+  }
+  $('list').innerHTML = rows.map(p =>
+    '<button class="part" data-pn="' + p.pn.replace(/"/g,'&quot;') + '">' +
+      '<span class="pn">' + p.pn + '</span>' +
+      '<span class="d">' + p.d + (p.n ? '<small>' + p.n + '</small>' : '') + '</span>' +
+      (p.r === 'Y' ? '<span class="rec">REC</span>' : '') +
+      '<span class="pr">' + money(p.p) + '</span>' +
+    '</button>').join('');
+}
+$('list').addEventListener('click', e => {
+  const b = e.target.closest('.part'); if(b) addPart(b.dataset.pn);
+});
+$('q').addEventListener('input', renderList);
+$('clearQ').addEventListener('click', () => { $('q').value = ''; renderList(); $('q').focus(); });
+
+$('q').addEventListener('keydown', e => {
+  if(e.key !== 'Enter') return;
+  e.preventDefault();
+  const raw = $('q').value.trim(); if(!raw) return;
+  const hit = CAT.parts[raw] ? raw : (CAT.parts[raw.toUpperCase()] ? raw.toUpperCase() : null);
+  if(hit){ addPart(hit); $('q').value = ''; renderList(); return; }
+  const rows = visibleParts().filter(p => matches(p, raw));
+  if(rows.length === 1){ addPart(rows[0].pn); $('q').value = ''; renderList(); }
+  else toast(rows.length ? 'Pick one of the ' + rows.length + ' matches' : 'No part matches that code');
+});
+
+function addPart(pn){
+  const p = CAT.parts[pn]; if(!p) return;
+  const ex = lines.find(l => l.pn === pn && l.bike === model.label);
+  if(ex) ex.qty++;
+  else lines.push({ pn:pn, d:p.d, price:p.p, qty:1, ovr:'',
+                    tax:p.tax !== false, bike:model.label, fresh:true });
+  toast((p.d.length > 34 ? pn : p.d) + ' added');
+  render();
+}
+const lineTotal = l => (l.ovr === '' ? l.price : parseFloat(l.ovr) || 0) * l.qty;
+
+function totals(){
+  const sub = lines.reduce((s,l) => s + lineTotal(l), 0);
+  const taxable = lines.reduce((s,l) => s + (l.tax ? lineTotal(l) : 0), 0);
+  const tax = taxable * ((parseFloat($('taxRate').value) || 0) / 100);
+  const ship = parseFloat($('ship').value) || 0;
+  $('sub').textContent = money(sub);
+  $('laborRow').style.display = (sub - taxable) > 0 ? '' : 'none';
+  $('labor').textContent = money(sub - taxable);
+  $('tax').textContent = money(tax);
+  $('total').textContent = money(sub + tax + ship);
+  $('fabCount').textContent = 'Ticket \u2014 ' + lines.length + (lines.length === 1 ? ' line' : ' lines');
+  $('fabTotal').textContent = money(sub + tax + ship);
+}
+function render(){
+  const multi = new Set(lines.map(l => l.bike)).size > 1;
+  if(!lines.length){
+    $('lines').innerHTML = '<div class="blank"><b>Nothing on the ticket</b>' +
+      'Tap a part to start. Everything is editable once it lands here.</div>';
+  } else {
+    $('lines').innerHTML = lines.map((l,i) =>
+      '<div class="line ' + (l.fresh ? 'new' : '') + '">' +
+        '<div class="info">' +
+          (multi ? '<div class="lbike">' + l.bike + '</div>' : '') +
+          '<div class="lpn">' + l.pn + '</div>' +
+          '<div class="ld">' + l.d + '</div>' +
+        '</div>' +
+        '<div class="ctl">' +
+          '<div class="qty">' +
+            '<button data-a="dec" data-i="' + i + '">&minus;</button>' +
+            '<span>' + l.qty + '</span>' +
+            '<button data-a="inc" data-i="' + i + '">+</button>' +
+          '</div>' +
+          '<div class="amt">' + money(lineTotal(l)) + '</div>' +
+          '<button class="del" data-a="del" data-i="' + i + '" aria-label="Remove">&times;</button>' +
+        '</div>' +
+        '<div class="ovr">' +
+          '<span>Unit ' + money(l.price) + ' &rarr; charge</span>' +
+          '<input type="number" step="0.01" placeholder="' + l.price.toFixed(2) + '" value="' + l.ovr +
+            '" data-a="ovr" data-i="' + i + '">' +
+          '<button class="taxtog ' + (l.tax ? 'on' : '') + '" data-a="tax" data-i="' + i + '">' +
+            (l.tax ? 'Taxed' : 'No tax') + '</button>' +
+        '</div>' +
+      '</div>').join('');
+    lines.forEach(l => l.fresh = false);
+  }
+  totals();
+}
+$('lines').addEventListener('click', e => {
+  const b = e.target.closest('[data-a]'); if(!b || b.tagName === 'INPUT') return;
+  const i = +b.dataset.i, a = b.dataset.a;
+  if(a === 'inc') lines[i].qty++;
+  if(a === 'dec'){ lines[i].qty--; if(lines[i].qty < 1) lines.splice(i,1); }
+  if(a === 'del') lines.splice(i,1);
+  if(a === 'tax') lines[i].tax = !lines[i].tax;
+  render();
+});
+$('lines').addEventListener('input', e => {
+  const b = e.target.closest('[data-a="ovr"]'); if(!b) return;
+  lines[+b.dataset.i].ovr = b.value; totals();
+});
+['taxRate','ship'].forEach(id => $(id).addEventListener('input', totals));
+
+function stampInv(){ $('invNo').textContent = 'INV-' + seq; }
+
+$('addCustom').addEventListener('click', () => {
+  const d = prompt('Description (labor, freight, shop supplies\u2026)'); if(!d) return;
+  const p = parseFloat(prompt('Amount', '0')); if(isNaN(p)) return;
+  const taxed = confirm('Charge sales tax on this line?\n\nOK = taxable   \u00b7   Cancel = labor / no tax');
+  lines.push({ pn:'CUSTOM', d:d, price:p, qty:1, ovr:'', tax:taxed, bike:model.label, fresh:true });
+  render();
+});
+$('clearAll').addEventListener('click', () => {
+  if(lines.length && !confirm('Clear all ' + lines.length + ' lines?')) return;
+  lines = []; render();
+});
+$('exportCsv').addEventListener('click', () => {
+  const esc = v => '"' + String(v).replace(/"/g,'""') + '"';
+  const rows = [['Bike','Part Number','Description','Qty','Unit Price','Line Total','Taxable']];
+  lines.forEach(l => rows.push([l.bike, l.pn, l.d, l.qty,
+    (l.ovr === '' ? l.price : l.ovr), lineTotal(l).toFixed(2), l.tax ? 'Y' : 'N']));
+  const csv = '\ufeff' + rows.map(r => r.map(esc).join(',')).join('\r\n');
+  const url = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8'}));
+  const a = document.createElement('a');
+  a.href = url; a.download = 'INV-' + seq + '.csv'; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+});
+$('printBtn').addEventListener('click', () => {
+  window.print(); seq++; store.set('b99_seq', String(seq)); stampInv();
+});
+$('fab').addEventListener('click', () => $('ticket').classList.add('open'));
+$('closeT').addEventListener('click', () => $('ticket').classList.remove('open'));
+
+let tT;
+function toast(msg){
+  $('toast').textContent = msg;
+  $('toast').classList.add('show');
+  clearTimeout(tT);
+  tT = setTimeout(() => $('toast').classList.remove('show'), 1400);
+}
+</script>
+</body>
+</html>
