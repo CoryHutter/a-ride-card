@@ -294,6 +294,53 @@ function blank(name, num) {
 function cur() { return S.d; }
 
 /* ---------- catalog helpers ---------- */
+var PN2BLOCK = null;
+function pnIndex() {
+  if (PN2BLOCK) return PN2BLOCK;
+  PN2BLOCK = {};
+  Object.keys(CAT.apparel).forEach(function (id) {
+    CAT.apparel[id].sz.forEach(function (x) { PN2BLOCK[x.p] = id; });
+  });
+  Object.keys(CAT.tires).forEach(function (id) {
+    CAT.tires[id].sz.forEach(function (x) { PN2BLOCK[x.p] = id; });
+  });
+  return PN2BLOCK;
+}
+/* A rebuilt catalog can regroup a block - tire lines especially - which changes
+   its id but never its part numbers. Re-file anything counted under a retired id
+   by following the part numbers to wherever they live now. Silent when it works,
+   reported when a part number is genuinely gone. */
+function migrate() {
+  var idx = pnIndex(), moved = 0, lost = [];
+  S.dealers.forEach(function (d) {
+    Object.keys(d.counted || {}).forEach(function (id) {
+      if (block(id)) return;
+      var qtys = d.counted[id];
+      var dest = null;
+      Object.keys(qtys).forEach(function (pn) {
+        var to = idx[pn];
+        if (!to) { lost.push(pn); return; }
+        dest = to;
+        d.counted[to] = d.counted[to] || {};
+        d.counted[to][pn] = (d.counted[to][pn] || 0) + qtys[pn];
+        moved++;
+      });
+      // an empty style still deserves to survive the rename
+      if (!dest && !Object.keys(qtys).length) {
+        var guess = (CAT.tires[id] ? id : null);
+        if (guess) d.counted[guess] = {};
+      }
+      delete d.counted[id];
+    });
+    Object.keys(d.order || {}).forEach(function (pn) {
+      var o = d.order[pn];
+      if (block(o.b)) return;
+      if (idx[pn]) o.b = idx[pn]; else delete d.order[pn];
+    });
+  });
+  if (moved || lost.length) save();
+  return { moved: moved, lost: lost };
+}
 function block(id) {
   return (CAT.apparel[id]) || (CAT.tires[id]) || null;
 }
@@ -363,6 +410,8 @@ function thumb(id) {
 }
 function cardHead(id, extra) {
   var b = block(id);
+  if (!b) return '<div class="top"><div class="meta"><h3>' + esc(id) + '</h3>'
+    + '<div class="cw">Not in this catalog</div></div></div>';
   var price = b.li ? ('$' + b.li.toFixed(2)) : '';
   var tags = '<span class="tag cat">' + esc(isTire(id) ? 'Tires' : b.cat) + '</span>'
            + '<span class="tag">' + esc(b.br) + '</span>'
@@ -378,6 +427,7 @@ function splitRun(id) {
   var sz = sizesOf(id);
   if (isTire(id)) return [sz];
   var b = block(id);
+  if (!b) return [sz];
   var y = sz.filter(function (x) { return isYouth(x.c, b.cat); });
   var a = sz.filter(function (x) { return !isYouth(x.c, b.cat); });
   return (y.length && a.length) ? [y, a] : [sz];
@@ -729,6 +779,7 @@ function allBlocks() {
 }
 function haystack(id) {
   var b = block(id);
+  if (!b) return '';
   return (isTire(id) ? (b.br + ' ' + b.md + ' Tires ' + b.sz.map(function (x) { return x.size + ' ' + x.p; }).join(' '))
                      : (b.br + ' ' + b.st + ' ' + b.cw + ' ' + b.cat + ' ' + id + ' '
                         + b.sz.map(function (x) { return x.p; }).join(' '))).toUpperCase();
@@ -773,6 +824,7 @@ function runSearch() {
   var terms = q.split(/\s+/).filter(Boolean);
   var hits = allBlocks().filter(function (id) {
     var b = block(id);
+    if (!b) return false;
     if (cat && (isTire(id) ? 'Tires' : b.cat) !== cat) return false;
     if (!terms.length) return true;
     var hay = haystack(id);
@@ -992,8 +1044,14 @@ fetch('catalog.json').then(function (r) {
   return r.json();
 }).then(function (j) {
   CAT = j;
-  document.getElementById('countNote').classList.remove('loading');
+  var mig = migrate();
   refresh();
+  if (mig.moved) {
+    var w = document.getElementById('staleWrap');
+    if (w) w.innerHTML = '<p class="note"><b>Catalog updated.</b> ' + mig.moved
+      + ' counted size' + (mig.moved === 1 ? '' : 's') + ' moved to the regrouped '
+      + 'listing automatically. Nothing was lost.</p>';
+  }
   if (!S.dealers.length) { renderDealers(); show('mDealer'); }
 }).catch(function (e) {
   document.getElementById('countNote').innerHTML =
