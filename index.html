@@ -238,7 +238,8 @@ input.f{width:100%;font:inherit;padding:10px 12px;border:1.5px solid #c6cad0;bac
       <select id="qcat">
         <option value="">All categories</option>
         <option>Helmets</option><option>Boots</option><option>Jerseys</option>
-        <option>Gloves</option><option>Tires</option>
+        <option>Gloves</option><option>Jackets</option><option>Pants</option>
+        <option>Tires</option>
       </select>
     </div>
     <div id="suggestWrap"></div>
@@ -477,7 +478,7 @@ function renderCount() {
     (byCat[k] = byCat[k] || []).push(id);
   });
   var html = '';
-  ['Helmets', 'Boots', 'Jerseys', 'Gloves', 'Tires'].forEach(function (k) {
+  ['Helmets', 'Boots', 'Jerseys', 'Gloves', 'Jackets', 'Pants', 'Tires'].forEach(function (k) {
     if (!byCat[k]) return;
     html += '<h2 class="sec">' + k + ' — ' + byCat[k].length + '</h2>';
     byCat[k].forEach(function (id) { html += countCard(id); });
@@ -619,7 +620,7 @@ function renderBoard() {
     (byCat[k] = byCat[k] || []).push(id);
   });
   var html = '';
-  ['Helmets', 'Boots', 'Jerseys', 'Gloves', 'Tires'].forEach(function (k) {
+  ['Helmets', 'Boots', 'Jerseys', 'Gloves', 'Jackets', 'Pants', 'Tires'].forEach(function (k) {
     if (!byCat[k]) return;
     html += '<h2 class="sec">' + k + '</h2>';
     byCat[k].forEach(function (id) { html += boardCard(id); });
