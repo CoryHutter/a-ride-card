@@ -186,6 +186,7 @@ input.f{width:100%;font:inherit;padding:10px 12px;border:1.5px solid #c6cad0;bac
     <div class="bar">
       <button class="btn" id="addStyles">+ Add styles</button>
       <button class="btn ghost" id="loadHist">Load sales history</button>
+      <button class="btn quiet" id="resetCounts">Reset counts</button>
     </div>
     <p class="note" id="countNote"></p>
     <div id="staleWrap"></div>
@@ -460,7 +461,8 @@ function renderCount() {
   var holder = document.getElementById('staleWrap');
   if (holder) holder.innerHTML = warn;
   note.innerHTML = ids.length
-    ? '<b>Tap a size to add one.</b> Tap again to keep counting up. The minus on each box takes one back off. '
+    ? '<b>Tap a size to add one.</b> Tap again to keep counting up. The minus on each box takes one back off, '
+      + 'and pressing and holding a box zeroes it. '
       + 'Everything saves as you go, so you can put the iPad down mid-aisle.'
       + (c.histName ? ' Sales history loaded from <b>' + esc(c.histName) + '</b>.'
                     : ' No sales history yet — load it and every gap gets scored against what actually sells here.')
@@ -531,6 +533,7 @@ document.addEventListener('click', function (ev) {
   }
   var cell = ev.target.closest('#pane-count .cell');
   if (cell) {
+    if (heldCell === cell) { heldCell = null; return; }   // the hold already zeroed it
     if (cell.dataset.nla) { flash(cell); return; }
     var card = cell.closest('.card'), id2 = card.dataset.id, pn = cell.dataset.pn;
     var dir = (minusArmed === card) ? -1 : 1;
@@ -542,6 +545,33 @@ document.addEventListener('click', function (ev) {
     updateCounts();
   }
 });
+
+/* Press and hold a size box to zero it, rather than tapping minus nine times.
+   Works for touch and mouse; the click that follows the hold is swallowed. */
+var holdTimer = null, heldCell = null;
+function startHold(ev) {
+  var cell = ev.target.closest('#pane-count .cell');
+  if (!cell || cell.dataset.nla) return;
+  var card = cell.closest('.card'), id = card.dataset.id, pn = cell.dataset.pn;
+  if (!qtyOf(id, pn)) return;
+  clearTimeout(holdTimer);
+  holdTimer = setTimeout(function () {
+    heldCell = cell;
+    setQty(id, pn, 0);
+    card.replaceWith(el(countCard(id)));
+    updateCounts();
+    if (navigator.vibrate) navigator.vibrate(18);
+  }, 550);
+}
+function cancelHold() { clearTimeout(holdTimer); }
+document.addEventListener('touchstart', startHold, { passive: true });
+document.addEventListener('touchend', cancelHold);
+document.addEventListener('touchmove', cancelHold, { passive: true });
+document.addEventListener('touchcancel', cancelHold);
+document.addEventListener('mousedown', startHold);
+document.addEventListener('mouseup', cancelHold);
+document.addEventListener('mouseleave', cancelHold);
+
 function flash(node) {
   node.animate([{ opacity: 1 }, { opacity: .35 }, { opacity: 1 }], { duration: 260 });
 }
@@ -893,6 +923,21 @@ function parseHistory(rows) {
   }
   return { sold: out, lines: n, qtyCol: qi >= 0 ? cols[qi] : null };
 }
+document.getElementById('resetCounts').addEventListener('click', function () {
+  var c = cur();
+  if (!c) { renderDealers(); show('mDealer'); return; }
+  var units = 0;
+  tracked().forEach(function (id) {
+    sizesOf(id).forEach(function (x) { units += qtyOf(id, x.p); });
+  });
+  if (!units) { alert('Nothing counted yet.'); return; }
+  if (!confirm('Set all ' + units + ' counted units back to zero?\n\n'
+    + 'Your ' + tracked().length + ' styles and the sales history stay put — '
+    + 'only the quantities are cleared.')) return;
+  Object.keys(c.counted).forEach(function (id) { c.counted[id] = {}; });
+  c.order = {};
+  save(); refresh(); tab('count');
+});
 document.getElementById('loadHist').addEventListener('click', function () {
   if (!cur()) { show('mDealer'); return; }
   document.getElementById('histFile').click();
