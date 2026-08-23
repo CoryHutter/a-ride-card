@@ -29,6 +29,8 @@ header{position:sticky;top:0;z-index:30;background:var(--ink);color:#fff;
  padding:calc(env(safe-area-inset-top) + 10px) 14px 0}
 .hrow{display:flex;align-items:center;gap:10px;padding-bottom:10px}
 .hrow h1{font-size:19px;letter-spacing:.02em}
+.build{font-family:var(--mono);font-size:9px;letter-spacing:.09em;color:#79808d;
+ align-self:flex-end;padding-bottom:2px}
 .dealer-btn{margin-left:auto;background:none;border:1.5px solid #4a5060;color:#fff;
  font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
  padding:7px 11px;max-width:52vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -170,7 +172,7 @@ input.f{width:100%;font:inherit;padding:10px 12px;border:1.5px solid #c6cad0;bac
 
 <header>
   <div class="hrow">
-    <h1>Wall Count</h1>
+    <h1>Wall Count</h1><span class="build" id="build"></span>
     <button class="dealer-btn" id="dealerBtn">No dealer</button>
   </div>
   <nav>
@@ -239,7 +241,7 @@ input.f{width:100%;font:inherit;padding:10px 12px;border:1.5px solid #c6cad0;bac
         <option value="">All categories</option>
         <option>Helmets</option><option>Boots</option><option>Jerseys</option>
         <option>Gloves</option><option>Jackets</option><option>Pants</option>
-        <option>Tires</option>
+        <option>Tires</option><option>Tubes</option><option>Batteries</option>
       </select>
     </div>
     <div id="suggestWrap"></div>
@@ -303,8 +305,8 @@ function pnIndex() {
   Object.keys(CAT.apparel).forEach(function (id) {
     CAT.apparel[id].sz.forEach(function (x) { PN2BLOCK[x.p] = id; });
   });
-  Object.keys(CAT.tires).forEach(function (id) {
-    CAT.tires[id].sz.forEach(function (x) { PN2BLOCK[x.p] = id; });
+  Object.keys(CAT.lines).forEach(function (id) {
+    CAT.lines[id].sz.forEach(function (x) { PN2BLOCK[x.p] = id; });
   });
   return PN2BLOCK;
 }
@@ -329,7 +331,7 @@ function migrate() {
       });
       // an empty style still deserves to survive the rename
       if (!dest && !Object.keys(qtys).length) {
-        var guess = (CAT.tires[id] ? id : null);
+        var guess = (CAT.lines[id] ? id : null);
         if (guess) d.counted[guess] = {};
       }
       delete d.counted[id];
@@ -344,25 +346,30 @@ function migrate() {
   return { moved: moved, lost: lost };
 }
 function block(id) {
-  return (CAT.apparel[id]) || (CAT.tires[id]) || null;
+  return (CAT.apparel[id]) || (CAT.lines[id]) || null;
 }
-function isTire(id) { return !!(CAT && CAT.tires[id]); }
+// A "line" is anything without a size run - tires, batteries, tubes. Every part
+// number is its own countable item rather than a size of one style.
+function isLine(id) { return !!(CAT && CAT.lines[id]); }
+function catOf(id) { var b = block(id); return b ? (b.cat || 'Tires') : ''; }
 function sizesOf(id) {
   var b = block(id); if (!b) return [];
-  return isTire(id)
-    ? b.sz.map(function (x) {
-        return { s: x.size, c: x.size + x.pos, p: x.p, nla: false,
-                 sub: (x.pos === 'Front/Rear' ? 'F/R' : x.pos) + (x.spec ? ' · ' + x.spec : '') };
-      })
-    : b.sz;
+  if (!isLine(id)) return b.sz;
+  return b.sz.map(function (x) {
+    var bits = [];
+    if (x.pos) bits.push(x.pos === 'Front/Rear' ? 'F/R' : x.pos);
+    if (x.spec) bits.push(x.spec);
+    return { s: x.size, c: x.size + (x.pos || ''), p: x.p, nla: false, sub: bits.join(' · ') };
+  });
 }
 function titleOf(id) {
   var b = block(id); if (!b) return id;
-  return isTire(id) ? (b.br + ' ' + b.md) : b.st;
+  return isLine(id) ? (b.br + ' ' + b.md) : b.st;
 }
 function subOf(id) {
   var b = block(id); if (!b) return '';
-  return isTire(id) ? (b.sz.length + ' fitments') : b.cw;
+  if (!isLine(id)) return b.cw;
+  return b.sz.length + ' ' + (b.cat === 'Tires' ? 'fitments' : 'items');
 }
 function photoOf(id) { var b = block(id); return b ? (b.im || '') : ''; }
 
@@ -415,7 +422,7 @@ function cardHead(id, extra) {
   if (!b) return '<div class="top"><div class="meta"><h3>' + esc(id) + '</h3>'
     + '<div class="cw">Not in this catalog</div></div></div>';
   var price = b.li ? ('$' + b.li.toFixed(2)) : '';
-  var tags = '<span class="tag cat">' + esc(isTire(id) ? 'Tires' : b.cat) + '</span>'
+  var tags = '<span class="tag cat">' + esc(b.cat || 'Tires') + '</span>'
            + '<span class="tag">' + esc(b.br) + '</span>'
            + (b.run ? '<span class="tag">' + esc(b.run) + '</span>' : '')
            + (b.nla ? '<span class="tag hot">' + b.nla + ' size' + (b.nla > 1 ? 's' : '') + ' NLA</span>' : '');
@@ -427,7 +434,7 @@ function cardHead(id, extra) {
 }
 function splitRun(id) {
   var sz = sizesOf(id);
-  if (isTire(id)) return [sz];
+  if (isLine(id)) return [sz];
   var b = block(id);
   if (!b) return [sz];
   var y = sz.filter(function (x) { return isYouth(x.c, b.cat); });
@@ -474,11 +481,11 @@ function renderCount() {
   var byCat = {};
   ids.forEach(function (id) {
     var b = block(id); if (!b) return;
-    var k = isTire(id) ? 'Tires' : b.cat;
+    var k = b.cat || 'Tires';
     (byCat[k] = byCat[k] || []).push(id);
   });
   var html = '';
-  ['Helmets', 'Boots', 'Jerseys', 'Gloves', 'Jackets', 'Pants', 'Tires'].forEach(function (k) {
+  ['Helmets', 'Boots', 'Jerseys', 'Gloves', 'Jackets', 'Pants', 'Tires', 'Tubes', 'Batteries'].forEach(function (k) {
     if (!byCat[k]) return;
     html += '<h2 class="sec">' + k + ' — ' + byCat[k].length + '</h2>';
     byCat[k].forEach(function (id) { html += countCard(id); });
@@ -616,11 +623,11 @@ function renderBoard() {
   var byCat = {};
   ids.forEach(function (id) {
     var b = block(id); if (!b) return;
-    var k = isTire(id) ? 'Tires' : b.cat;
+    var k = b.cat || 'Tires';
     (byCat[k] = byCat[k] || []).push(id);
   });
   var html = '';
-  ['Helmets', 'Boots', 'Jerseys', 'Gloves', 'Jackets', 'Pants', 'Tires'].forEach(function (k) {
+  ['Helmets', 'Boots', 'Jerseys', 'Gloves', 'Jackets', 'Pants', 'Tires', 'Tubes', 'Batteries'].forEach(function (k) {
     if (!byCat[k]) return;
     html += '<h2 class="sec">' + k + '</h2>';
     byCat[k].forEach(function (id) { html += boardCard(id); });
@@ -805,13 +812,14 @@ document.getElementById('oClear').addEventListener('click', function () {
 function allBlocks() {
   var out = [];
   Object.keys(CAT.apparel).forEach(function (k) { out.push(k); });
-  Object.keys(CAT.tires).forEach(function (k) { out.push(k); });
+  Object.keys(CAT.lines).forEach(function (k) { out.push(k); });
   return out;
 }
 function haystack(id) {
   var b = block(id);
   if (!b) return '';
-  return (isTire(id) ? (b.br + ' ' + b.md + ' Tires ' + b.sz.map(function (x) { return x.size + ' ' + x.p; }).join(' '))
+  return (isLine(id) ? (b.br + ' ' + b.md + ' ' + (b.cat || '') + ' '
+                        + b.sz.map(function (x) { return x.size + ' ' + x.p; }).join(' '))
                      : (b.br + ' ' + b.st + ' ' + b.cw + ' ' + b.cat + ' ' + id + ' '
                         + b.sz.map(function (x) { return x.p; }).join(' '))).toUpperCase();
 }
@@ -856,7 +864,7 @@ function runSearch() {
   var hits = allBlocks().filter(function (id) {
     var b = block(id);
     if (!b) return false;
-    if (cat && (isTire(id) ? 'Tires' : b.cat) !== cat) return false;
+    if (cat && (b.cat || 'Tires') !== cat) return false;
     if (!terms.length) return true;
     var hay = haystack(id);
     return terms.every(function (t) { return hay.indexOf(t) >= 0; });
@@ -1081,6 +1089,12 @@ function updateCounts() {
   }
 }
 function refresh() { renderCount(); renderBoard(); renderOrder(); updateCounts(); }
+/* A visible count of what this page actually loaded, so a stale pair of files
+   shows itself at a glance instead of only when something breaks. */
+function stamp() {
+  var n = Object.keys(CAT.apparel).length + Object.keys(CAT.lines).length;
+  document.getElementById('build').textContent = n + ' lines';
+}
 
 /* ---------- boot ---------- */
 load();
@@ -1090,7 +1104,12 @@ fetch('catalog.json').then(function (r) {
   return r.json();
 }).then(function (j) {
   CAT = j;
+  // Tires, batteries and tubes were once filed under `tires` and are now `lines`.
+  // Accept either, so a half-finished upload still runs instead of going blank.
+  if (!CAT.lines) CAT.lines = CAT.tires || {};
+  if (!CAT.apparel) throw new Error('catalog.json has no apparel section');
   var mig = migrate();
+  stamp();
   refresh();
   if (mig.moved) {
     var w = document.getElementById('staleWrap');
@@ -1100,10 +1119,15 @@ fetch('catalog.json').then(function (r) {
   }
   if (!S.dealers.length) { renderDealers(); show('mDealer'); }
 }).catch(function (e) {
-  document.getElementById('countNote').innerHTML =
-    '<b>Catalog did not load.</b> This page needs <code>catalog.json</code> sitting next to it, '
-    + 'served over http — opening the file straight off the disk will not work. '
-    + 'On GitHub Pages it just works. (' + esc(e.message) + ')';
+  var m = String(e.message || e);
+  var mismatch = /CAT\.|apparel|lines|tires/.test(m);
+  document.getElementById('countNote').innerHTML = mismatch
+    ? '<b>This page and the catalog do not match.</b> One of the two files on GitHub is older '
+      + 'than the other. Upload <code>index.html</code> and <code>catalog.json</code> together, '
+      + 'then pull down to refresh. (' + esc(m) + ')'
+    : '<b>Catalog did not load.</b> This page needs <code>catalog.json</code> sitting next to it, '
+      + 'served over http — opening the file straight off the disk will not work. '
+      + 'On GitHub Pages it just works. (' + esc(m) + ')';
 });
 })();
 </script>
