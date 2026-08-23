@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Wall Count — WPS size run audit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#16181d; --paper:#fff; --mute:#8b929c; --line:#e3e3e1;
+  --blue:#1552d0; --red:#b3261e; --green:#0f6b3d; --amber:#f2c200; --dead:#9aa0a8;
+  --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --disp:"Oswald","Helvetica Neue",Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:#f2f2f0;color:var(--ink);
+ font:400 15px/1.5 "Helvetica Neue",Helvetica,Arial,sans-serif;-webkit-text-size-adjust:100%;
+ overscroll-behavior-y:none}
+h1,h2,h3,h4{font-family:var(--disp);font-weight:700;text-transform:uppercase;margin:0}
+.mono{font-family:var(--mono)}
+button{font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+
+/* ---------- chrome ---------- */
+header{position:sticky;top:0;z-index:30;background:var(--ink);color:#fff;
+ padding:calc(env(safe-area-inset-top) + 10px) 14px 0}
+.hrow{display:flex;align-items:center;gap:10px;padding-bottom:10px}
+.hrow h1{font-size:19px;letter-spacing:.02em}
+.dealer-btn{margin-left:auto;background:none;border:1.5px solid #4a5060;color:#fff;
+ font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+ padding:7px 11px;max-width:52vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+nav{display:flex;gap:0;border-top:1px solid #2c3038}
+nav button{flex:1;background:none;border:0;border-bottom:3px solid transparent;color:#9aa2b0;
+ font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;padding:12px 4px}
+nav button.on{color:#fff;border-bottom-color:#fff}
+nav button b{display:block;font-family:var(--disp);font-size:16px;font-weight:600;line-height:1}
+main{max-width:900px;margin:0 auto;padding:16px 14px calc(env(safe-area-inset-bottom) + 96px)}
+.pane{display:none}.pane.on{display:block}
+
+/* ---------- shared bits ---------- */
+.card{background:#fff;border:1.5px solid var(--ink);margin-bottom:12px}
+.card .top{display:flex;gap:12px;padding:12px 13px;align-items:flex-start}
+.thumb{flex:0 0 66px;width:66px;height:62px;border:1.5px solid var(--ink);background:#fafaf8;
+ display:flex;align-items:center;justify-content:center;overflow:hidden}
+.thumb img{max-width:92%;max-height:92%;object-fit:contain;mix-blend-mode:multiply}
+.thumb.none{border-style:dashed;border-color:#c3c7cd;font-family:var(--mono);font-size:9px;
+ color:var(--mute);text-align:center;padding:4px;line-height:1.25}
+.meta{min-width:0;flex:1}
+.meta h3{font-size:21px;line-height:1.05}
+.meta .cw{color:#5f6670;font-size:14px}
+.meta .pn{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--mute);margin-top:2px}
+.tagrow{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.tag{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;
+ border:1px solid var(--line);color:var(--mute);padding:3px 6px}
+.tag.cat{border-color:var(--ink);color:var(--ink)}
+.tag.hot{border-color:var(--red);color:var(--red)}
+.grid{display:flex;flex-wrap:wrap;gap:7px;padding:0 13px 12px}
+.grid.indent{padding-top:0}
+.cell{position:relative;min-width:84px;flex:1 1 84px;padding:8px 9px 7px;border:1.5px solid var(--ink);
+ background:#fff;text-align:left;transition:transform .1s ease}
+.cell:active{transform:scale(.96)}
+.cell .s{display:block;font-family:var(--disp);font-weight:700;font-size:17px;line-height:1;
+ text-transform:uppercase}
+.cell .p{display:block;font-family:var(--mono);font-size:10px;margin-top:2px;opacity:.85}
+.cell .n{position:absolute;top:-9px;right:-7px;min-width:20px;height:20px;border-radius:2px;
+ background:var(--ink);color:#fff;border:1.5px solid #fff;font-family:var(--mono);font-size:11px;
+ line-height:17px;text-align:center;padding:0 3px}
+.cell.have{background:var(--green);color:#fff;border-color:var(--green)}
+.cell.sells{background:var(--red);color:#fff;border-color:var(--red)}
+.cell.nohist{background:var(--amber);color:#241d00;border-color:#c9a300}
+.cell.nohist .p{color:#4a3d00;opacity:1}
+.cell.zero{background:#fff;color:var(--ink)}
+.cell.nla{background:repeating-linear-gradient(135deg,#f4f4f2 0 6px,#e9e9e6 6px 12px);
+ color:var(--dead);border-color:#c3c7cd;border-style:dashed}
+.cell.nla .p{color:var(--dead)}
+.cell .sold{display:block;font-family:var(--mono);font-size:10px;margin-top:2px}
+.cell.sel{box-shadow:0 0 0 3px var(--blue)}
+.foot{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:9px 13px;
+ border-top:1px solid var(--line);font-family:var(--mono);font-size:10px;letter-spacing:.12em;
+ text-transform:uppercase;color:var(--mute)}
+.foot button{background:none;border:1px solid #c6cad0;color:#5f6670;font-family:var(--mono);
+ font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:5px 9px}
+.foot button.warn{border-color:var(--red);color:var(--red)}
+.foot .sp{margin-left:auto}
+
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.bar input,.bar select{font:inherit;padding:10px 12px;border:1.5px solid #c6cad0;background:#fff;min-width:0}
+.bar input{flex:1 1 200px}
+.btn{background:var(--ink);color:#fff;border:1.5px solid var(--ink);padding:10px 14px;
+ font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+.btn.ghost{background:#fff;color:var(--ink)}
+.btn.quiet{background:#fff;color:var(--mute);border-color:#c6cad0}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;
+ color:var(--mute);margin:0 0 16px}
+.key{display:inline-block;width:15px;height:15px;border:1.5px solid;vertical-align:-3px;margin-right:6px}
+.key.have{background:var(--green);border-color:var(--green)}
+.key.sells{background:var(--red);border-color:var(--red)}
+.key.nohist{background:var(--amber);border-color:#c9a300}
+.key.nla{background:#e9e9e6;border-color:#c3c7cd;border-style:dashed}
+.note{background:#f4f4f2;border-left:4px solid var(--ink);padding:12px 14px;font-size:13.5px;
+ line-height:1.55;margin:0 0 16px}
+.note b{font-weight:700}
+.empty{text-align:center;color:var(--mute);padding:40px 20px;font-size:14px;line-height:1.6}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);border:2px solid var(--ink);
+ background:#fff;margin-bottom:16px}
+.stat{padding:13px 12px;border-right:1px solid var(--line)}
+.stat:last-child{border-right:0}
+.stat b{display:block;font-family:var(--disp);font-size:31px;line-height:1}
+.stat b.r{color:var(--red)} .stat b.a{color:#a37a00} .stat b.g{color:var(--green)}
+.stat span{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.13em;
+ text-transform:uppercase;color:var(--mute);margin-top:5px}
+.sec{font-size:14px;letter-spacing:.18em;border-bottom:3px solid var(--ink);
+ padding-bottom:7px;margin:26px 0 14px}
+.sec:first-child{margin-top:0}
+
+/* ---------- modal ---------- */
+.scrim{position:fixed;inset:0;z-index:60;background:rgba(22,24,29,.55);display:none;
+ align-items:flex-end;justify-content:center}
+.scrim.on{display:flex}
+.sheet{background:#fff;width:100%;max-width:760px;max-height:92vh;display:flex;flex-direction:column;
+ border-top:4px solid var(--ink)}
+.sheet header{position:static;background:#fff;color:var(--ink);padding:16px 18px 12px;
+ border-bottom:2px solid var(--ink);display:flex;align-items:center;gap:10px}
+.sheet header h2{font-size:22px}
+.sheet header .x{margin-left:auto;background:none;border:0;font-size:27px;line-height:1;color:var(--mute);padding:0 4px}
+.sheet .body{overflow:auto;-webkit-overflow-scrolling:touch;padding:14px 18px;flex:1}
+.sheet .acts{display:flex;gap:8px;flex-wrap:wrap;padding:13px 18px calc(env(safe-area-inset-bottom) + 13px);
+ border-top:2px solid var(--ink)}
+.sheet .acts .btn{flex:1 1 130px}
+label.f{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.14em;
+ text-transform:uppercase;color:var(--mute);margin:0 0 5px}
+input.f{width:100%;font:inherit;padding:10px 12px;border:1.5px solid #c6cad0;background:#fafaf8;margin-bottom:14px}
+.row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #eee}
+.row .g{flex:1;min-width:0}
+.row .g b{display:block;font-family:var(--disp);font-size:16px;font-weight:600;text-transform:uppercase}
+.row .g span{font-family:var(--mono);font-size:11px;color:var(--mute)}
+.step{display:flex;align-items:center}
+.step button{width:30px;height:30px;border:1.5px solid var(--ink);background:#fff;font-size:16px;line-height:1}
+.step span{min-width:34px;height:30px;line-height:27px;text-align:center;font-family:var(--mono);
+ font-size:14px;border-top:1.5px solid var(--ink);border-bottom:1.5px solid var(--ink)}
+.drop{background:none;border:0;color:var(--red);font-size:19px;padding:0 4px}
+
+/* ---------- order bar ---------- */
+#obar{position:fixed;left:0;right:0;bottom:0;z-index:40;background:var(--ink);color:#fff;
+ display:none;align-items:center;gap:12px;
+ padding:12px 16px calc(env(safe-area-inset-bottom) + 12px);
+ font-family:var(--mono);font-size:12px;box-shadow:0 -6px 24px rgba(0,0,0,.2)}
+#obar.on{display:flex}
+#obar .btn{margin-left:auto;background:#fff;color:var(--ink);border-color:#fff}
+
+@media (max-width:640px){
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .stat:nth-child(2){border-right:0}
+  .stat:nth-child(-n+2){border-bottom:1px solid var(--line)}
+  .cell{flex:1 1 74px;min-width:74px}
+  .meta h3{font-size:18px}
+  main{padding-bottom:calc(env(safe-area-inset-bottom) + 110px)}
+}
+@media print{header,nav,#obar,.bar,.foot button,.note{display:none!important}
+  body{background:#fff}.card{break-inside:avoid}}
+@media (prefers-reduced-motion:reduce){.cell{transition:none}.cell:active{transform:none}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <h1>Wall Count</h1>
+    <button class="dealer-btn" id="dealerBtn">No dealer</button>
+  </div>
+  <nav>
+    <button data-tab="count" class="on"><b id="nCount">0</b>Count</button>
+    <button data-tab="board"><b id="nBoard">0</b>Board</button>
+    <button data-tab="order"><b id="nOrder">0</b>Order</button>
+  </nav>
+</header>
+
+<main>
+  <!-- COUNT -->
+  <section class="pane on" id="pane-count">
+    <div class="bar">
+      <button class="btn" id="addStyles">+ Add styles</button>
+      <button class="btn ghost" id="loadHist">Load sales history</button>
+    </div>
+    <p class="note" id="countNote"></p>
+    <div id="countList"></div>
+  </section>
+
+  <!-- BOARD -->
+  <section class="pane" id="pane-board">
+    <div id="boardStats"></div>
+    <p class="legend">
+      <span><i class="key have"></i>In stock</span>
+      <span><i class="key sells"></i>Out — has sold here</span>
+      <span><i class="key nohist"></i>Out — no sales history</span>
+      <span><i class="key nla"></i>Discontinued</span>
+    </p>
+    <div id="boardList"></div>
+  </section>
+
+  <!-- ORDER -->
+  <section class="pane" id="pane-order">
+    <div id="orderBody"></div>
+  </section>
+</main>
+
+<div id="obar">
+  <span id="obarText"></span>
+  <button class="btn" id="goOrder">Review order</button>
+</div>
+
+<!-- ============ modals ============ -->
+<div class="scrim" id="mDealer"><div class="sheet">
+  <header><h2>Dealers</h2><button class="x" data-close>&times;</button></header>
+  <div class="body">
+    <div id="dealerList"></div>
+    <h3 style="font-size:16px;margin:20px 0 10px">Add a dealer</h3>
+    <label class="f" for="dName">Store name</label>
+    <input class="f" id="dName" type="text" placeholder="Hammertime Sports">
+    <label class="f" for="dNum">WPS account number</label>
+    <input class="f" id="dNum" type="text" inputmode="numeric" placeholder="950142">
+  </div>
+  <div class="acts"><button class="btn" id="dSave">Add dealer</button></div>
+</div></div>
+
+<div class="scrim" id="mAdd"><div class="sheet">
+  <header><h2>Add styles</h2><button class="x" data-close>&times;</button></header>
+  <div class="body">
+    <div class="bar">
+      <input type="search" id="q" placeholder="Style, colorway, part number, brand">
+      <select id="qcat">
+        <option value="">All categories</option>
+        <option>Helmets</option><option>Boots</option><option>Jerseys</option>
+        <option>Gloves</option><option>Tires</option>
+      </select>
+    </div>
+    <div id="suggestWrap"></div>
+    <div id="results"></div>
+  </div>
+  <div class="acts"><button class="btn quiet" data-close>Done</button></div>
+</div></div>
+
+<div class="scrim" id="mOrder"><div class="sheet">
+  <header><h2>Suggested order</h2><button class="x" data-close>&times;</button></header>
+  <div class="body">
+    <label class="f" for="who">Who's sending this</label>
+    <input class="f" id="who" type="text" placeholder="Name at the store" autocomplete="name">
+    <div id="orderList"></div>
+  </div>
+  <div class="acts">
+    <button class="btn" id="oCopy">Copy list</button>
+    <button class="btn ghost" id="oMail">Email it</button>
+    <button class="btn ghost" onclick="window.print()">Print</button>
+    <button class="btn quiet" id="oClear">Clear</button>
+  </div>
+</div></div>
+
+<input type="file" id="histFile" accept=".xls,.xlsx,.csv" hidden>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+/* =====================================================================
+   Wall Count — a size-run audit you fill in on the wall.
+   Catalog is shared across every dealer; counts, sales history and the
+   working order live per dealer in localStorage.
+   ===================================================================== */
+(function () {
+'use strict';
+
+var CAT = null;                  // catalog.json
+var S   = { dealers: [], cur: null, d: null };
+var KEY = 'wallcount:v1';
+
+/* ---------- storage ---------- */
+function load() {
+  try {
+    var raw = localStorage.getItem(KEY);
+    if (raw) S = Object.assign(S, JSON.parse(raw));
+  } catch (e) { /* private mode, or storage disabled - run in memory */ }
+  if (!S.dealers) S.dealers = [];
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
+}
+function blank(name, num) {
+  return { id: num || String(Date.now()), name: name, num: num || '',
+           counted: {}, sold: {}, order: {}, who: '', histName: '' };
+}
+function cur() { return S.d; }
+
+/* ---------- catalog helpers ---------- */
+function block(id) {
+  return (CAT.apparel[id]) || (CAT.tires[id]) || null;
+}
+function isTire(id) { return !!(CAT && CAT.tires[id]); }
+function sizesOf(id) {
+  var b = block(id); if (!b) return [];
+  return isTire(id)
+    ? b.sz.map(function (x) { return { s: x.size + ' ' + x.pos, c: x.size, p: x.p, nla: false, spec: x.spec }; })
+    : b.sz;
+}
+function titleOf(id) {
+  var b = block(id); if (!b) return id;
+  return isTire(id) ? (b.br + ' ' + b.md) : b.st;
+}
+function subOf(id) {
+  var b = block(id); if (!b) return '';
+  return isTire(id) ? (b.sz.length + ' fitments') : b.cw;
+}
+function photoOf(id) { var b = block(id); return b ? (b.im || '') : ''; }
+
+/* ---------- count state ---------- */
+function qtyOf(id, pn) {
+  var c = cur(); return (c.counted[id] && c.counted[id][pn]) || 0;
+}
+function setQty(id, pn, n) {
+  var c = cur();
+  if (!c.counted[id]) c.counted[id] = {};
+  if (n <= 0) delete c.counted[id][pn]; else c.counted[id][pn] = n;
+  save();
+}
+function tracked() { return Object.keys(cur().counted); }
+function soldOf(pn) { return cur().sold[pn] || 0; }
+
+/* ---------- rendering helpers ---------- */
+function el(html) { var d = document.createElement('div'); d.innerHTML = html.trim(); return d.firstChild; }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+  return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
+function thumb(id) {
+  var u = photoOf(id);
+  return u ? '<span class="thumb"><img src="' + esc(u) + '" loading="lazy" alt=""'
+           + ' onerror="this.parentNode.className=\'thumb none\';this.parentNode.textContent=\'no photo\'"></span>'
+           : '<span class="thumb none">' + esc(id) + '</span>';
+}
+function cardHead(id, extra) {
+  var b = block(id);
+  var price = b.li ? ('$' + b.li.toFixed(2)) : '';
+  var tags = '<span class="tag cat">' + esc(isTire(id) ? 'Tires' : b.cat) + '</span>'
+           + '<span class="tag">' + esc(b.br) + '</span>'
+           + (b.run ? '<span class="tag">' + esc(b.run) + '</span>' : '')
+           + (b.nla ? '<span class="tag hot">' + b.nla + ' size' + (b.nla > 1 ? 's' : '') + ' NLA</span>' : '');
+  return '<div class="top">' + thumb(id) +
+    '<div class="meta"><h3>' + esc(titleOf(id)) + '</h3>' +
+    '<div class="cw">' + esc(subOf(id)) + '</div>' +
+    '<div class="pn">' + esc(id) + (price ? ' · ' + price : '') + '</div>' +
+    '<div class="tagrow">' + tags + '</div>' + (extra || '') + '</div></div>';
+}
+function splitRun(id) {
+  var sz = sizesOf(id);
+  if (isTire(id)) return [sz];
+  var b = block(id);
+  var y = sz.filter(function (x) { return isYouth(x.c, b.cat); });
+  var a = sz.filter(function (x) { return !isYouth(x.c, b.cat); });
+  return (y.length && a.length) ? [y, a] : [sz];
+}
+function isYouth(code, cat) {
+  if (/^Y/i.test(code)) return true;
+  return cat === 'Boots' && /^\d+$/.test(code) && +code <= 6;
+}
+
+/* =====================================================================
+   COUNT
+   ===================================================================== */
+function renderCount() {
+  if (!CAT) return;
+  var wrap = document.getElementById('countList');
+  var note = document.getElementById('countNote');
+  var c = cur();
+  if (!c) { wrap.innerHTML = ''; note.innerHTML = '<b>Pick a dealer to start.</b> Tap the button top right.'; return; }
+  var ids = tracked();
+  note.innerHTML = ids.length
+    ? '<b>Tap a size to add one.</b> Tap again to keep counting up. The minus on each box takes one back off. '
+      + 'Everything saves as you go, so you can put the iPad down mid-aisle.'
+      + (c.histName ? ' Sales history loaded from <b>' + esc(c.histName) + '</b>.'
+                    : ' No sales history yet — load it and every gap gets scored against what actually sells here.')
+    : '<b>Nothing on the count list yet.</b> Load the sales history first and it will suggest the styles this '
+      + 'store already buys — that is usually the whole wall. Or add styles by hand.';
+  if (!ids.length) { wrap.innerHTML = ''; return; }
+
+  var byCat = {};
+  ids.forEach(function (id) {
+    var k = isTire(id) ? 'Tires' : block(id).cat;
+    (byCat[k] = byCat[k] || []).push(id);
+  });
+  var html = '';
+  ['Helmets', 'Boots', 'Jerseys', 'Gloves', 'Tires'].forEach(function (k) {
+    if (!byCat[k]) return;
+    html += '<h2 class="sec">' + k + ' — ' + byCat[k].length + '</h2>';
+    byCat[k].forEach(function (id) { html += countCard(id); });
+  });
+  wrap.innerHTML = html;
+}
+function countCard(id) {
+  var runs = splitRun(id), h = '<article class="card" data-id="' + esc(id) + '">' + cardHead(id);
+  var onhand = 0;
+  runs.forEach(function (run, i) {
+    h += '<div class="grid' + (i ? ' indent' : '') + '">';
+    run.forEach(function (x) {
+      var n = qtyOf(id, x.p); onhand += n;
+      var cls = x.nla ? 'cell nla' : (n > 0 ? 'cell have' : 'cell zero');
+      h += '<button class="' + cls + '" data-pn="' + esc(x.p) + '"' + (x.nla ? ' data-nla="1"' : '') + '>'
+        + (n ? '<b class="n">' + n + '</b>' : '')
+        + '<span class="s">' + esc(x.s) + '</span>'
+        + '<span class="p">' + esc(x.p) + '</span></button>';
+    });
+    h += '</div>';
+  });
+  h += '<div class="foot"><span>' + onhand + ' counted</span>'
+     + '<button class="minus">− one</button>'
+     + '<span class="sp"></span><button class="warn remove">Remove style</button></div></article>';
+  return h;
+}
+
+/* tap a size to count up; "− one" arms the next tap to subtract */
+var minusArmed = null;
+document.addEventListener('click', function (ev) {
+  var m = ev.target.closest('.minus');
+  if (m) {
+    var art = m.closest('.card');
+    minusArmed = (minusArmed === art) ? null : art;
+    document.querySelectorAll('.minus').forEach(function (b) {
+      b.style.background = ''; b.style.color = ''; b.style.borderColor = '';
+    });
+    if (minusArmed) { m.style.background = 'var(--red)'; m.style.color = '#fff'; m.style.borderColor = 'var(--red)'; }
+    return;
+  }
+  var rm = ev.target.closest('.remove');
+  if (rm) {
+    var id = rm.closest('.card').dataset.id;
+    if (confirm('Take ' + titleOf(id) + ' off the count list? The quantities go with it.')) {
+      delete cur().counted[id];
+      Object.keys(cur().order).forEach(function (pn) {
+        if (sizesOf(id).some(function (x) { return x.p === pn; })) delete cur().order[pn];
+      });
+      save(); refresh();
+    }
+    return;
+  }
+  var cell = ev.target.closest('#pane-count .cell');
+  if (cell) {
+    if (cell.dataset.nla) { flash(cell); return; }
+    var card = cell.closest('.card'), id2 = card.dataset.id, pn = cell.dataset.pn;
+    var dir = (minusArmed === card) ? -1 : 1;
+    setQty(id2, pn, qtyOf(id2, pn) + dir);
+    var fresh = el(countCard(id2));
+    card.replaceWith(fresh);
+    if (dir < 0) { var mb = fresh.querySelector('.minus');
+      minusArmed = fresh; mb.style.background = 'var(--red)'; mb.style.color = '#fff'; mb.style.borderColor = 'var(--red)'; }
+    updateCounts();
+  }
+});
+function flash(node) {
+  node.animate([{ opacity: 1 }, { opacity: .35 }, { opacity: 1 }], { duration: 260 });
+}
+
+/* =====================================================================
+   BOARD
+   ===================================================================== */
+function scoreOf(id, x) {
+  var n = qtyOf(id, x.p);
+  if (x.nla) return 'nla';
+  if (n > 0) return 'have';
+  return soldOf(x.p) ? 'sells' : 'nohist';
+}
+function renderBoard() {
+  var wrap = document.getElementById('boardList'), st = document.getElementById('boardStats');
+  var c = (CAT ? cur() : null), ids = c ? tracked() : [];
+  if (!ids.length) {
+    st.innerHTML = ''; wrap.innerHTML = '<p class="empty">Count something first and the board fills itself in.</p>';
+    return;
+  }
+  var units = 0, gapS = 0, gapN = 0, nla = 0, demand = 0;
+  ids.forEach(function (id) {
+    sizesOf(id).forEach(function (x) {
+      var s = scoreOf(id, x);
+      if (s === 'have') units += qtyOf(id, x.p);
+      else if (s === 'sells') { gapS++; demand += soldOf(x.p); }
+      else if (s === 'nohist') gapN++;
+      else nla++;
+    });
+  });
+  st.innerHTML = '<div class="stats">'
+    + '<div class="stat"><b class="g">' + units + '</b><span>Units on hand</span></div>'
+    + '<div class="stat"><b>' + (gapS + gapN) + '</b><span>Sizes missing</span></div>'
+    + '<div class="stat"><b class="r">' + gapS + '</b><span>Of those, proven sellers</span></div>'
+    + '<div class="stat"><b class="a">' + gapN + '</b><span>Never sold here</span></div></div>'
+    + (demand ? '<p class="note">Those ' + gapS + ' empty pegs represent <b>' + demand
+        + ' units</b> this store actually sold in the period the history covers.'
+        + (nla ? ' A further ' + nla + ' size' + (nla > 1 ? 's are' : ' is') + ' discontinued and cannot be reordered.' : '')
+        + '</p>' : '');
+
+  var byCat = {};
+  ids.forEach(function (id) { var k = isTire(id) ? 'Tires' : block(id).cat; (byCat[k] = byCat[k] || []).push(id); });
+  var html = '';
+  ['Helmets', 'Boots', 'Jerseys', 'Gloves', 'Tires'].forEach(function (k) {
+    if (!byCat[k]) return;
+    html += '<h2 class="sec">' + k + '</h2>';
+    byCat[k].forEach(function (id) { html += boardCard(id); });
+  });
+  wrap.innerHTML = html;
+}
+function boardCard(id) {
+  var runs = splitRun(id), h = '<article class="card" data-id="' + esc(id) + '">' + cardHead(id);
+  var onhand = 0, gaps = 0, proven = 0, sold = 0;
+  runs.forEach(function (run, i) {
+    h += '<div class="grid' + (i ? ' indent' : '') + '">';
+    run.forEach(function (x) {
+      var s = scoreOf(id, x), n = qtyOf(id, x.p), sd = soldOf(x.p);
+      sold += sd;
+      if (s === 'have') onhand += n;
+      if (s === 'sells' || s === 'nohist') gaps++;
+      if (s === 'sells') proven++;
+      var picked = cur().order[x.p] ? ' sel' : '';
+      h += '<button class="cell ' + s + picked + '" data-pn="' + esc(x.p) + '"'
+        + ' data-sold="' + sd + '" data-block="' + esc(id) + '"'
+        + (s === 'nla' ? ' data-nla="1"' : '')
+        + ' title="' + esc(x.p) + ' · ' + (s === 'nla' ? 'discontinued'
+            : (n ? n + ' on hand' : 'out of stock')) + (sd ? ' · ' + sd + ' sold' : '') + '">'
+        + (n ? '<b class="n">' + n + '</b>' : '')
+        + '<span class="s">' + esc(x.s) + '</span>'
+        + '<span class="p">' + esc(x.p) + '</span>'
+        + (s === 'sells' ? '<span class="sold">' + sd + ' sold</span>' : '')
+        + '</button>';
+    });
+    h += '</div>';
+  });
+  h += '<div class="foot"><span>' + onhand + ' on hand</span><span>' + gaps + ' to order</span>'
+     + (sold ? '<span>' + sold + ' sold</span>' : '')
+     + '<span class="sp"></span>'
+     + (proven ? '<button class="warn addProven">Add ' + proven + ' proven</button>' : '')
+     + '<button class="addAll">Add all ' + gaps + '</button></div></article>';
+  return h;
+}
+document.addEventListener('click', function (ev) {
+  var card = ev.target.closest('#pane-board .card');
+  if (!card) return;
+  var id = card.dataset.id;
+  var ap = ev.target.closest('.addProven'), aa = ev.target.closest('.addAll');
+  if (ap || aa) {
+    sizesOf(id).forEach(function (x) {
+      var s = scoreOf(id, x);
+      if (s === 'nla' || s === 'have') return;
+      if (ap && s !== 'sells') return;
+      cur().order[x.p] = cur().order[x.p] || { b: id, q: 1 };
+    });
+    save(); renderBoard(); updateCounts(); return;
+  }
+  var cell = ev.target.closest('.cell');
+  if (cell) {
+    if (cell.dataset.nla) { flash(cell); return; }
+    var pn = cell.dataset.pn;
+    if (cur().order[pn]) delete cur().order[pn];
+    else cur().order[pn] = { b: id, q: 1 };
+    save(); cell.classList.toggle('sel'); updateCounts();
+  }
+});
+
+/* =====================================================================
+   ORDER
+   ===================================================================== */
+function orderRows() {
+  var c = cur(), out = [];
+  if (!c || !CAT) return out;
+  Object.keys(c.order).forEach(function (pn) {
+    var o = c.order[pn], b = block(o.b);
+    if (!b) return;
+    var sz = sizesOf(o.b).filter(function (x) { return x.p === pn; })[0];
+    if (!sz) return;
+    out.push({ pn: pn, id: o.b, qty: o.q, size: sz.s, sold: soldOf(pn),
+               onhand: qtyOf(o.b, pn), li: b.li, dl: b.dl });
+  });
+  return out;
+}
+function renderOrder() {
+  var body = document.getElementById('orderBody'), rows = orderRows();
+  if (!cur()) { body.innerHTML = '<p class="empty">Pick a dealer first.</p>'; return; }
+  if (!rows.length) {
+    body.innerHTML = '<p class="empty">Nothing selected yet.<br>On the Board tab, tap a red or yellow box '
+      + '— or use <b>Add proven</b> to take every size that has sold here.</p>';
+    return;
+  }
+  var units = 0, cost = 0;
+  rows.forEach(function (r) { units += r.qty; if (r.dl) cost += r.dl * r.qty; });
+  body.innerHTML = '<div class="stats">'
+    + '<div class="stat"><b>' + rows.length + '</b><span>Sizes</span></div>'
+    + '<div class="stat"><b>' + units + '</b><span>Units</span></div>'
+    + '<div class="stat"><b class="r">' + rows.reduce(function (a, r) { return a + (r.sold ? 1 : 0); }, 0)
+    + '</b><span>Proven sellers</span></div>'
+    + '<div class="stat"><b>' + (cost ? '$' + Math.round(cost) : '—') + '</b><span>At dealer cost</span></div>'
+    + '</div><button class="btn" id="openOrder" style="width:100%">Review, adjust and send</button>';
+  document.getElementById('openOrder').onclick = openOrder;
+}
+function openOrder() {
+  var list = document.getElementById('orderList'), rows = orderRows();
+  var groups = {};
+  rows.forEach(function (r) { (groups[r.id] = groups[r.id] || []).push(r); });
+  var h = '';
+  Object.keys(groups).forEach(function (id) {
+    h += '<div style="margin-top:16px">' + '<div style="display:flex;gap:11px;align-items:center">'
+       + thumb(id) + '<div><b style="font-family:var(--disp);font-size:17px;text-transform:uppercase">'
+       + esc(titleOf(id)) + '</b><br><span class="mono" style="font-size:11px;color:var(--mute)">'
+       + esc(subOf(id)) + ' · ' + esc(id) + '</span></div></div>';
+    groups[id].forEach(function (r) {
+      h += '<div class="row" data-pn="' + esc(r.pn) + '"><div class="g"><b>' + esc(r.size) + '</b>'
+        + '<span>' + esc(r.pn) + (r.sold ? ' · ' + r.sold + ' sold' : ' · no sales history') + '</span></div>'
+        + '<span class="step"><button data-d="-1" aria-label="One fewer">−</button><span>' + r.qty
+        + '</span><button data-d="1" aria-label="One more">+</button></span>'
+        + '<button class="drop" aria-label="Remove">×</button></div>';
+    });
+    h += '</div>';
+  });
+  list.innerHTML = h;
+  document.getElementById('who').value = cur().who || '';
+  show('mOrder');
+}
+document.getElementById('orderList').addEventListener('click', function (ev) {
+  var row = ev.target.closest('.row'); if (!row) return;
+  var pn = row.dataset.pn, o = cur().order[pn], btn = ev.target.closest('button');
+  if (!o || !btn) return;
+  if (btn.classList.contains('drop')) delete cur().order[pn];
+  else if (btn.dataset.d) o.q = Math.max(1, o.q + (+btn.dataset.d));
+  save(); openOrder(); renderOrder(); renderBoard(); updateCounts();
+  if (!Object.keys(cur().order).length) hide('mOrder');
+});
+document.getElementById('who').addEventListener('input', function () { cur().who = this.value; save(); });
+
+function orderText() {
+  var c = cur(), rows = orderRows(), groups = {}, out = [];
+  rows.forEach(function (r) { (groups[r.id] = groups[r.id] || []).push(r); });
+  out.push('SUGGESTED ORDER — ' + c.name.toUpperCase());
+  if (c.num) out.push('WPS account ' + c.num);
+  out.push('Date: ' + new Date().toISOString().slice(0, 10));
+  if (c.who) out.push('Submitted by: ' + c.who);
+  if (c.histName) out.push('Scored against sales history: ' + c.histName);
+  out.push('');
+  Object.keys(groups).forEach(function (id) {
+    var b = block(id);
+    out.push(titleOf(id).toUpperCase() + ' — ' + subOf(id) + '  (' + id + ')');
+    groups[id].forEach(function (r) {
+      out.push('  ' + String(r.qty).padStart(2) + '  ' + r.pn + '   ' + r.size
+        + (r.sold ? '   sold ' + r.sold : '   no sales history'));
+    });
+    out.push('');
+  });
+  var units = rows.reduce(function (a, r) { return a + r.qty; }, 0);
+  var cost = rows.reduce(function (a, r) { return a + (r.dl || 0) * r.qty; }, 0);
+  out.push('Total: ' + rows.length + ' sizes, ' + units + ' units'
+    + (cost ? ', about $' + Math.round(cost) + ' at dealer cost' : ''));
+  return out.join('\n');
+}
+document.getElementById('oCopy').addEventListener('click', function () {
+  var t = orderText(), btn = this, old = btn.textContent;
+  function ok() { btn.textContent = 'Copied'; setTimeout(function () { btn.textContent = old; }, 1400); }
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(t).then(ok, fb);
+  else fb();
+  function fb() {
+    var ta = document.createElement('textarea');
+    ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); ok(); } catch (e) { window.prompt('Copy this order:', t); }
+    document.body.removeChild(ta);
+  }
+});
+document.getElementById('oMail').addEventListener('click', function () {
+  location.href = 'mailto:?subject=' + encodeURIComponent('Suggested order — ' + cur().name)
+    + '&body=' + encodeURIComponent(orderText());
+});
+document.getElementById('oClear').addEventListener('click', function () {
+  if (!confirm('Clear the whole order?')) return;
+  cur().order = {}; save(); hide('mOrder'); refresh();
+});
+
+/* =====================================================================
+   ADD STYLES  +  sales-history suggestions
+   ===================================================================== */
+function allBlocks() {
+  var out = [];
+  Object.keys(CAT.apparel).forEach(function (k) { out.push(k); });
+  Object.keys(CAT.tires).forEach(function (k) { out.push(k); });
+  return out;
+}
+function haystack(id) {
+  var b = block(id);
+  return (isTire(id) ? (b.br + ' ' + b.md + ' Tires ' + b.sz.map(function (x) { return x.size + ' ' + x.p; }).join(' '))
+                     : (b.br + ' ' + b.st + ' ' + b.cw + ' ' + b.cat + ' ' + id + ' '
+                        + b.sz.map(function (x) { return x.p; }).join(' '))).toUpperCase();
+}
+function suggested() {
+  var c = cur(); if (!c || !Object.keys(c.sold).length) return [];
+  var hit = {};
+  allBlocks().forEach(function (id) {
+    var n = 0;
+    sizesOf(id).forEach(function (x) { n += (c.sold[x.p] || 0); });
+    if (n) hit[id] = n;
+  });
+  return Object.keys(hit).sort(function (a, b) { return hit[b] - hit[a]; })
+    .map(function (id) { return { id: id, n: hit[id] }; });
+}
+function renderSuggest() {
+  var wrap = document.getElementById('suggestWrap');
+  var sug = suggested().filter(function (s) { return !cur().counted[s.id]; });
+  if (!sug.length) { wrap.innerHTML = ''; return; }
+  wrap.innerHTML = '<p class="note"><b>' + sug.length + ' styles this store already sells</b> and that are not '
+    + 'on the count list yet, biggest sellers first. Adding them all is usually the fastest way to start.</p>'
+    + '<button class="btn" id="addAllSug" style="width:100%;margin-bottom:14px">Add all ' + sug.length + '</button>'
+    + sug.slice(0, 40).map(function (s) { return resultCard(s.id, s.n); }).join('');
+  document.getElementById('addAllSug').onclick = function () {
+    sug.forEach(function (s) { if (!cur().counted[s.id]) cur().counted[s.id] = {}; });
+    save(); refresh(); renderSuggest(); runSearch();
+  };
+}
+function resultCard(id, sold) {
+  var on = !!cur().counted[id];
+  return '<article class="card" data-add="' + esc(id) + '">'
+    + cardHead(id, sold ? '<div class="tagrow"><span class="tag hot">' + sold + ' sold here</span></div>' : '')
+    + '<div class="foot"><span>' + sizesOf(id).length + ' sizes</span><span class="sp"></span>'
+    + '<button class="' + (on ? 'warn drop-style' : 'add-style') + '">'
+    + (on ? 'On the list' : 'Add to count') + '</button></div></article>';
+}
+function runSearch() {
+  var q = document.getElementById('q').value.trim().toUpperCase();
+  var cat = document.getElementById('qcat').value;
+  var box = document.getElementById('results');
+  if (!q && !cat) { box.innerHTML = ''; return; }
+  var terms = q.split(/\s+/).filter(Boolean);
+  var hits = allBlocks().filter(function (id) {
+    var b = block(id);
+    if (cat && (isTire(id) ? 'Tires' : b.cat) !== cat) return false;
+    if (!terms.length) return true;
+    var hay = haystack(id);
+    return terms.every(function (t) { return hay.indexOf(t) >= 0; });
+  });
+  box.innerHTML = '<h2 class="sec">' + hits.length + ' match' + (hits.length === 1 ? '' : 'es')
+    + (hits.length > 60 ? ' — showing 60' : '') + '</h2>'
+    + (hits.length ? hits.slice(0, 60).map(function (id) { return resultCard(id, 0); }).join('')
+                   : '<p class="empty">Nothing matched. Try a part number or just the style name.</p>');
+}
+document.getElementById('q').addEventListener('input', debounce(runSearch, 180));
+document.getElementById('qcat').addEventListener('change', runSearch);
+document.addEventListener('click', function (ev) {
+  var card = ev.target.closest('[data-add]'); if (!card) return;
+  var id = card.dataset.add;
+  if (ev.target.closest('.add-style')) { cur().counted[id] = cur().counted[id] || {}; }
+  else if (ev.target.closest('.drop-style')) { delete cur().counted[id]; }
+  else return;
+  save(); card.replaceWith(el(resultCard(id, 0))); updateCounts(); renderCount(); renderBoard();
+});
+function debounce(fn, ms) { var t; return function () { clearTimeout(t); t = setTimeout(fn, ms); }; }
+
+/* =====================================================================
+   SALES HISTORY
+   ===================================================================== */
+function csvRows(text) {
+  var rows = [], row = [], cell = '', q = false;
+  for (var i = 0; i < text.length; i++) {
+    var ch = text[i];
+    if (q) {
+      if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; }
+      else cell += ch;
+    } else if (ch === '"') q = true;
+    else if (ch === ',') { row.push(cell); cell = ''; }
+    else if (ch === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
+    else if (ch !== '\r') cell += ch;
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+  return rows;
+}
+
+var QTY_COLS = ['L18', 'L12', 'L6', 'YTD', 'TOTAL', 'QTY', 'UNITS', 'SOLD'];
+function parseHistory(rows) {
+  // find the header row: the one carrying an ITEM# style column
+  var hi = -1, cols = null;
+  for (var i = 0; i < Math.min(rows.length, 15); i++) {
+    var r = (rows[i] || []).map(function (v) { return String(v == null ? '' : v).trim().toUpperCase(); });
+    if (r.some(function (v) { return /^ITEM\s*#?$/.test(v) || v === 'PART#' || v === 'PART NUMBER' || v === 'SKU'; })) {
+      hi = i; cols = r; break;
+    }
+  }
+  if (hi < 0) return null;
+  var pi = cols.findIndex(function (v) {
+    return /^ITEM\s*#?$/.test(v) || v === 'PART#' || v === 'PART NUMBER' || v === 'SKU'; });
+  var qi = -1;
+  for (var k = 0; k < QTY_COLS.length && qi < 0; k++) qi = cols.indexOf(QTY_COLS[k]);
+  var out = {}, n = 0;
+  for (var j = hi + 1; j < rows.length; j++) {
+    var row = rows[j] || [];
+    var pn = String(row[pi] == null ? '' : row[pi]).trim();
+    if (!pn) continue;
+    var q = qi >= 0 ? parseFloat(row[qi]) : 1;
+    if (!isFinite(q) || q <= 0) continue;
+    out[pn] = (out[pn] || 0) + Math.round(q);
+    n++;
+  }
+  return { sold: out, lines: n, qtyCol: qi >= 0 ? cols[qi] : null };
+}
+document.getElementById('loadHist').addEventListener('click', function () {
+  if (!cur()) { show('mDealer'); return; }
+  document.getElementById('histFile').click();
+});
+document.getElementById('histFile').addEventListener('change', function () {
+  var f = this.files && this.files[0]; if (!f) return;
+  var fr = new FileReader();
+  var isCsv = /\.csv$/i.test(f.name);
+  if (typeof XLSX === 'undefined' && !isCsv) {
+    alert('The spreadsheet reader did not load — that needs an internet connection the first time.\n\n'
+      + 'Either get online and reload this page, or open the history in Excel and save it as CSV, '
+      + 'which this page can read on its own.');
+    this.value = ''; return;
+  }
+  fr.onload = function () {
+    try {
+      var rows;
+      if (typeof XLSX !== 'undefined') {
+        var wb = XLSX.read(fr.result, { type: isCsv ? 'string' : 'array' });
+        var sh = wb.Sheets[wb.SheetNames[0]];
+        rows = XLSX.utils.sheet_to_json(sh, { header: 1, raw: true, defval: '' });
+      } else {
+        rows = csvRows(fr.result);
+      }
+      var res = parseHistory(rows);
+      if (!res) { alert('Could not find a part-number column in that file. It needs a header row with ITEM# (or SKU / PART#).'); return; }
+      cur().sold = res.sold; cur().histName = f.name; save();
+      var matched = 0;
+      allBlocks().forEach(function (id) {
+        sizesOf(id).forEach(function (x) { if (res.sold[x.p]) matched++; });
+      });
+      alert(res.lines + ' history lines read'
+        + (res.qtyCol ? ' using the ' + res.qtyCol + ' column for units' : ' (no unit column found — counted as 1 each)')
+        + '.\n' + matched + ' of them match a part number in the catalog.');
+      refresh(); renderSuggest();
+    } catch (e) {
+      alert('Could not read that file: ' + e.message);
+    }
+  };
+  if (isCsv && typeof XLSX === 'undefined') fr.readAsText(f);
+  else if (isCsv) fr.readAsText(f);
+  else fr.readAsArrayBuffer(f);
+  this.value = '';
+});
+
+/* =====================================================================
+   DEALERS
+   ===================================================================== */
+function renderDealers() {
+  var box = document.getElementById('dealerList');
+  if (!S.dealers.length) { box.innerHTML = '<p class="empty">No dealers yet. Add one below.</p>'; return; }
+  box.innerHTML = S.dealers.map(function (d) {
+    var n = Object.keys(d.counted || {}).length;
+    return '<div class="row" data-pick="' + esc(d.id) + '"><div class="g"><b>' + esc(d.name) + '</b>'
+      + '<span>' + (d.num ? d.num + ' · ' : '') + n + ' styles'
+      + (d.histName ? ' · history loaded' : ' · no history') + '</span></div>'
+      + '<button class="btn ' + (S.cur === d.id ? '' : 'ghost') + '" data-use>'
+      + (S.cur === d.id ? 'Current' : 'Open') + '</button>'
+      + '<button class="drop" data-del aria-label="Delete">×</button></div>';
+  }).join('');
+}
+document.getElementById('dealerList').addEventListener('click', function (ev) {
+  var row = ev.target.closest('[data-pick]'); if (!row) return;
+  var id = row.dataset.pick;
+  if (ev.target.closest('[data-del]')) {
+    var d = S.dealers.filter(function (x) { return x.id === id; })[0];
+    if (!confirm('Delete ' + d.name + ' and everything counted for them?')) return;
+    S.dealers = S.dealers.filter(function (x) { return x.id !== id; });
+    if (S.cur === id) { S.cur = S.dealers.length ? S.dealers[0].id : null; }
+    S.d = S.dealers.filter(function (x) { return x.id === S.cur; })[0] || null;
+    save(); renderDealers(); refresh(); return;
+  }
+  S.cur = id; S.d = S.dealers.filter(function (x) { return x.id === id; })[0];
+  save(); renderDealers(); refresh(); hide('mDealer');
+});
+document.getElementById('dSave').addEventListener('click', function () {
+  var name = document.getElementById('dName').value.trim();
+  var num = document.getElementById('dNum').value.trim();
+  if (!name) { alert('Give the store a name.'); return; }
+  var d = blank(name, num);
+  if (S.dealers.some(function (x) { return x.id === d.id; })) d.id = d.id + '-' + Date.now();
+  S.dealers.push(d); S.cur = d.id; S.d = d;
+  document.getElementById('dName').value = ''; document.getElementById('dNum').value = '';
+  save(); renderDealers(); refresh(); hide('mDealer');
+});
+
+/* =====================================================================
+   shell
+   ===================================================================== */
+function show(id) { document.getElementById(id).classList.add('on'); document.body.style.overflow = 'hidden'; }
+function hide(id) { document.getElementById(id).classList.remove('on'); document.body.style.overflow = ''; }
+document.addEventListener('click', function (ev) {
+  if (ev.target.matches('[data-close]') || ev.target.classList.contains('scrim')) {
+    var s = ev.target.closest('.scrim') || ev.target;
+    if (s.classList.contains('scrim')) hide(s.id);
+  }
+});
+document.addEventListener('keydown', function (ev) {
+  if (ev.key === 'Escape') document.querySelectorAll('.scrim.on').forEach(function (s) { hide(s.id); });
+});
+document.getElementById('dealerBtn').addEventListener('click', function () { renderDealers(); show('mDealer'); });
+document.getElementById('addStyles').addEventListener('click', function () {
+  if (!cur()) { renderDealers(); show('mDealer'); return; }
+  renderSuggest(); runSearch(); show('mAdd');
+});
+document.getElementById('goOrder').addEventListener('click', function () { tab('order'); openOrder(); });
+document.querySelectorAll('nav button').forEach(function (b) {
+  b.addEventListener('click', function () { tab(b.dataset.tab); });
+});
+function tab(name) {
+  document.querySelectorAll('nav button').forEach(function (b) { b.classList.toggle('on', b.dataset.tab === name); });
+  document.querySelectorAll('.pane').forEach(function (p) { p.classList.toggle('on', p.id === 'pane-' + name); });
+  if (name === 'board') renderBoard();
+  if (name === 'order') renderOrder();
+  window.scrollTo(0, 0);
+}
+function updateCounts() {
+  var c = (CAT ? cur() : null);
+  var styles = c ? tracked().length : 0;
+  var gaps = 0, ord = 0;
+  if (c) {
+    tracked().forEach(function (id) {
+      sizesOf(id).forEach(function (x) { var s = scoreOf(id, x); if (s === 'sells' || s === 'nohist') gaps++; });
+    });
+    ord = Object.keys(c.order).length;
+  }
+  document.getElementById('nCount').textContent = styles;
+  document.getElementById('nBoard').textContent = gaps;
+  document.getElementById('nOrder').textContent = ord;
+  document.getElementById('dealerBtn').textContent = c ? c.name : 'No dealer';
+  var bar = document.getElementById('obar');
+  bar.classList.toggle('on', ord > 0);
+  if (ord) {
+    var units = orderRows().reduce(function (a, r) { return a + r.qty; }, 0);
+    document.getElementById('obarText').innerHTML = ord + ' size' + (ord === 1 ? '' : 's')
+      + ' · ' + units + ' unit' + (units === 1 ? '' : 's');
+  }
+}
+function refresh() { renderCount(); renderBoard(); renderOrder(); updateCounts(); }
+
+/* ---------- boot ---------- */
+load();
+S.d = S.dealers.filter(function (x) { return x.id === S.cur; })[0] || null;
+fetch('catalog.json').then(function (r) {
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}).then(function (j) {
+  CAT = j;
+  document.getElementById('countNote').classList.remove('loading');
+  refresh();
+  if (!S.dealers.length) { renderDealers(); show('mDealer'); }
+}).catch(function (e) {
+  document.getElementById('countNote').innerHTML =
+    '<b>Catalog did not load.</b> This page needs <code>catalog.json</code> sitting next to it, '
+    + 'served over http — opening the file straight off the disk will not work. '
+    + 'On GitHub Pages it just works. (' + esc(e.message) + ')';
+});
+})();
+</script>
+</body>
+</html>
