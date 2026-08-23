@@ -103,6 +103,8 @@ main{max-width:900px;margin:0 auto;padding:16px 14px calc(env(safe-area-inset-bo
 .note{background:#f4f4f2;border-left:4px solid var(--ink);padding:12px 14px;font-size:13.5px;
  line-height:1.55;margin:0 0 16px}
 .note b{font-weight:700}
+.note.warn{border-left-color:var(--red);background:#fdf2f1}
+.note.warn .btn{display:block}
 .empty{text-align:center;color:var(--mute);padding:40px 20px;font-size:14px;line-height:1.6}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);border:2px solid var(--ink);
  background:#fff;margin-bottom:16px}
@@ -186,6 +188,7 @@ input.f{width:100%;font:inherit;padding:10px 12px;border:1.5px solid #c6cad0;bac
       <button class="btn ghost" id="loadHist">Load sales history</button>
     </div>
     <p class="note" id="countNote"></p>
+    <div id="staleWrap"></div>
     <div id="countList"></div>
   </section>
 
@@ -324,7 +327,28 @@ function setQty(id, pn, n) {
   if (n <= 0) delete c.counted[id][pn]; else c.counted[id][pn] = n;
   save();
 }
-function tracked() { return Object.keys(cur().counted); }
+function tracked() {
+  return Object.keys(cur().counted).filter(function (id) { return !!block(id); });
+}
+// A rebuilt catalog can retire an id - tire lines regroup, styles get dropped.
+// Anything counted under an id we no longer recognise is parked, not crashed on.
+function stale() {
+  var c = cur(); if (!c || !CAT) return [];
+  var ids = Object.keys(c.counted).filter(function (id) { return !block(id); });
+  Object.keys(c.order).forEach(function (pn) {
+    var b = c.order[pn].b;
+    if (!block(b) && ids.indexOf(b) < 0) ids.push(b);
+  });
+  return ids;
+}
+function dropStale() {
+  var c = cur();
+  stale().forEach(function (id) {
+    delete c.counted[id];
+    Object.keys(c.order).forEach(function (pn) { if (c.order[pn].b === id) delete c.order[pn]; });
+  });
+  save(); refresh();
+}
 function soldOf(pn) { return cur().sold[pn] || 0; }
 
 /* ---------- rendering helpers ---------- */
@@ -373,6 +397,18 @@ function renderCount() {
   var c = cur();
   if (!c) { wrap.innerHTML = ''; note.innerHTML = '<b>Pick a dealer to start.</b> Tap the button top right.'; return; }
   var ids = tracked();
+  var old = stale();
+  var warn = old.length
+    ? '<p class="note warn"><b>' + old.length + ' item' + (old.length > 1 ? 's' : '')
+      + ' no longer in the catalog.</b> The catalog was rebuilt and '
+      + (old.length > 1 ? 'these were' : 'this was') + ' regrouped or retired: '
+      + old.map(esc).join(', ') + '. '
+      + 'Anything counted against ' + (old.length > 1 ? 'them is' : 'it is') + ' being ignored. '
+      + '<button class="btn ghost" id="dropStale" style="margin-top:9px">Clear them and re-add</button></p>'
+    : '';
+  note.insertAdjacentHTML('afterend', '');
+  var holder = document.getElementById('staleWrap');
+  if (holder) holder.innerHTML = warn;
   note.innerHTML = ids.length
     ? '<b>Tap a size to add one.</b> Tap again to keep counting up. The minus on each box takes one back off. '
       + 'Everything saves as you go, so you can put the iPad down mid-aisle.'
@@ -384,7 +420,8 @@ function renderCount() {
 
   var byCat = {};
   ids.forEach(function (id) {
-    var k = isTire(id) ? 'Tires' : block(id).cat;
+    var b = block(id); if (!b) return;
+    var k = isTire(id) ? 'Tires' : b.cat;
     (byCat[k] = byCat[k] || []).push(id);
   });
   var html = '';
@@ -496,7 +533,11 @@ function renderBoard() {
         + '</p>' : '');
 
   var byCat = {};
-  ids.forEach(function (id) { var k = isTire(id) ? 'Tires' : block(id).cat; (byCat[k] = byCat[k] || []).push(id); });
+  ids.forEach(function (id) {
+    var b = block(id); if (!b) return;
+    var k = isTire(id) ? 'Tires' : b.cat;
+    (byCat[k] = byCat[k] || []).push(id);
+  });
   var html = '';
   ['Helmets', 'Boots', 'Jerseys', 'Gloves', 'Tires'].forEach(function (k) {
     if (!byCat[k]) return;
@@ -899,6 +940,9 @@ document.addEventListener('click', function (ev) {
 });
 document.addEventListener('keydown', function (ev) {
   if (ev.key === 'Escape') document.querySelectorAll('.scrim.on').forEach(function (s) { hide(s.id); });
+});
+document.addEventListener('click', function (ev) {
+  if (ev.target.id === 'dropStale') dropStale();
 });
 document.getElementById('dealerBtn').addEventListener('click', function () { renderDealers(); show('mDealer'); });
 document.getElementById('addStyles').addEventListener('click', function () {
