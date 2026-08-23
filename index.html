@@ -59,7 +59,7 @@ main{max-width:900px;margin:0 auto;padding:16px 14px calc(env(safe-area-inset-bo
 .tag.hot{border-color:var(--red);color:var(--red)}
 .grid{display:flex;flex-wrap:wrap;gap:7px;padding:0 13px 12px}
 .grid.indent{padding-top:0}
-.cell{position:relative;min-width:84px;flex:1 1 84px;padding:8px 9px 7px;border:1.5px solid var(--ink);
+.cell{position:relative;min-width:96px;flex:1 1 96px;padding:8px 9px 7px;border:1.5px solid var(--ink);
  background:#fff;text-align:left;transition:transform .1s ease}
 .cell:active{transform:scale(.96)}
 .cell .s{display:block;font-family:var(--disp);font-weight:700;font-size:17px;line-height:1;
@@ -155,7 +155,7 @@ input.f{width:100%;font:inherit;padding:10px 12px;border:1.5px solid #c6cad0;bac
   .stats{grid-template-columns:repeat(2,1fr)}
   .stat:nth-child(2){border-right:0}
   .stat:nth-child(-n+2){border-bottom:1px solid var(--line)}
-  .cell{flex:1 1 74px;min-width:74px}
+  .cell{flex:1 1 88px;min-width:88px}
   .meta h3{font-size:18px}
   main{padding-bottom:calc(env(safe-area-inset-bottom) + 110px)}
 }
@@ -298,7 +298,10 @@ function isTire(id) { return !!(CAT && CAT.tires[id]); }
 function sizesOf(id) {
   var b = block(id); if (!b) return [];
   return isTire(id)
-    ? b.sz.map(function (x) { return { s: x.size + ' ' + x.pos, c: x.size, p: x.p, nla: false, spec: x.spec }; })
+    ? b.sz.map(function (x) {
+        return { s: x.size, c: x.size + x.pos, p: x.p, nla: false,
+                 sub: (x.pos === 'Front/Rear' ? 'F/R' : x.pos) + (x.spec ? ' · ' + x.spec : '') };
+      })
     : b.sz;
 }
 function titleOf(id) {
@@ -403,6 +406,7 @@ function countCard(id) {
       h += '<button class="' + cls + '" data-pn="' + esc(x.p) + '"' + (x.nla ? ' data-nla="1"' : '') + '>'
         + (n ? '<b class="n">' + n + '</b>' : '')
         + '<span class="s">' + esc(x.s) + '</span>'
+        + (x.sub ? '<span class="p">' + esc(x.sub) + '</span>' : '')
         + '<span class="p">' + esc(x.p) + '</span></button>';
     });
     h += '</div>';
@@ -520,6 +524,7 @@ function boardCard(id) {
             : (n ? n + ' on hand' : 'out of stock')) + (sd ? ' · ' + sd + ' sold' : '') + '">'
         + (n ? '<b class="n">' + n + '</b>' : '')
         + '<span class="s">' + esc(x.s) + '</span>'
+        + (x.sub ? '<span class="p">' + esc(x.sub) + '</span>' : '')
         + '<span class="p">' + esc(x.p) + '</span>'
         + (s === 'sells' ? '<span class="sold">' + sd + ' sold</span>' : '')
         + '</button>';
