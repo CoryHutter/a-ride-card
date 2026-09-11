@@ -579,6 +579,143 @@ function toast(msg){
   clearTimeout(tT);
   tT = setTimeout(() => $('toast').classList.remove('show'), 1400);
 }
+/* ============================================================
+   A-RIDE PATCH — Quote mode + auto-fill from the intake form
+   Paste this whole block into a-ride-invoice-builder.html,
+   on the line just ABOVE the closing </script> tag near the
+   very bottom of the file. Nothing else needs to change.
+   ============================================================ */
+
+/* --- styles for the new bits --- */
+var arsCss = document.createElement('style');
+arsCss.textContent =
+  '.modebtn{background:transparent;border:1px solid var(--gold-dim);color:var(--gold);' +
+  'border-radius:4px;padding:5px 11px;font-size:11.5px;cursor:pointer;' +
+  'font-family:"Barlow Condensed",sans-serif;font-weight:600;letter-spacing:.09em;' +
+  'text-transform:uppercase}' +
+  '.modebtn.quote{background:var(--gold);color:var(--navy)}' +
+  '.ars-qnote{display:none;margin-top:10px;padding-top:8px;border-top:1px solid var(--line);' +
+  'font-size:11.5px;color:var(--muted);line-height:1.45}' +
+  '.ars-qnote.on{display:block}' +
+  '@media print{.modebtn{display:none !important}' +
+  '.ars-qnote{color:#444;border-color:#999}' +
+  '.ars-qnote.on{display:block !important}}';
+document.head.appendChild(arsCss);
+
+/* --- find the pieces we need to change --- */
+var arsTitle = document.querySelector('.t-head h2');
+var arsGrand = document.querySelector('.grand span');
+var arsBtnBar = document.querySelector('.t-head .r1 > div');
+
+/* --- the Quote / Invoice toggle button --- */
+var arsModeBtn = document.createElement('button');
+arsModeBtn.className = 'modebtn';
+arsModeBtn.id = 'modeBtn';
+arsBtnBar.insertBefore(arsModeBtn, arsBtnBar.firstChild);
+
+/* --- the "estimate only" line that prints on quotes --- */
+var arsNote = document.createElement('div');
+arsNote.className = 'ars-qnote';
+arsNote.id = 'arsQnote';
+arsNote.textContent =
+  'Estimate only \u2014 valid 30 days. Labor is firm. Seals, bushings and springs ' +
+  'are quoted where listed; anything found worn on teardown will be confirmed with ' +
+  'you before it is fitted. Nothing is ordered or started until you approve this quote.';
+var arsFootNote = document.querySelector('.t-foot .print-only');
+arsFootNote.parentNode.insertBefore(arsNote, arsFootNote);
+
+/* --- quote numbering, kept separate from invoice numbering --- */
+var arsMode = (store.get('aride_mode') === 'quote') ? 'quote' : 'invoice';
+var arsQseq = parseInt(store.get('aride_qseq') || '500', 10);
+
+/* replaces the original stampInv so the number matches the mode */
+stampInv = function(){
+  $('invNo').textContent = (arsMode === 'quote')
+    ? 'QTE-' + arsQseq
+    : 'INV-' + seq;
+};
+
+function arsApplyMode(){
+  var q = (arsMode === 'quote');
+  arsTitle.textContent = q ? 'Quote' : 'Work Order';
+  arsGrand.textContent = q ? 'Estimate' : 'Total due';
+  arsModeBtn.textContent = q ? 'Quote' : 'Invoice';
+  arsModeBtn.classList.toggle('quote', q);
+  arsNote.classList.toggle('on', q);
+  $('printBtn').textContent = q ? 'Print quote' : 'Print / PDF';
+  store.set('aride_mode', arsMode);
+  stampInv();
+}
+
+arsModeBtn.addEventListener('click', function(){
+  arsMode = (arsMode === 'quote') ? 'invoice' : 'quote';
+  arsApplyMode();
+});
+
+/* --- take over the print button so quotes bump the quote number --- */
+var arsOldPrint = $('printBtn');
+var arsNewPrint = arsOldPrint.cloneNode(true);
+arsOldPrint.parentNode.replaceChild(arsNewPrint, arsOldPrint);
+arsNewPrint.addEventListener('click', function(){
+  window.print();
+  if(arsMode === 'quote'){
+    arsQseq++;
+    store.set('aride_qseq', String(arsQseq));
+  } else {
+    seq++;
+    store.set('aride_seq', String(seq));
+  }
+  stampInv();
+});
+
+/* --- pull the customer in from the intake form link --- */
+function arsPrefill(){
+  var p = new URLSearchParams(location.search);
+  var get = function(k){ return (p.get(k) || '').trim(); };
+  if(!get('customer') && !get('ref') && !get('make')) return;
+
+  if(get('customer')) $('cName').value = get('customer');
+
+  var contact = [get('phone'), get('email')].filter(Boolean).join(' \u00b7 ');
+  if(contact) $('cPhone').value = contact;
+
+  if(get('ref')) $('cWO').value = get('ref');
+
+  var notes = [];
+  if(get('weight')) notes.push(get('weight') + ' lbs rider');
+  if(get('skill')) notes.push(get('skill'));
+  if(get('services')) notes.push(get('services'));
+  if(notes.length) $('cRider').value = notes.join(' \u00b7 ');
+
+  var y = get('year'), mk = get('make'), md = get('model');
+  if(y || mk || md){
+    var norm = function(s){ return s.toLowerCase().replace(/[\s\-_.]/g, ''); };
+    var hit = CAT.models.find(function(m){
+      return String(m.year) === y
+          && norm(m.make) === norm(mk)
+          && norm(m.model) === norm(md);
+    });
+    if(hit){
+      selectBike(hit.id);
+    } else {
+      $('cBike').value = [y, mk, md].filter(Boolean).join(' ');
+    }
+  }
+
+  arsMode = 'quote';
+  arsApplyMode();
+  toast('Loaded ' + (get('customer') || get('ref')));
+}
+
+/* --- run both once the catalog has finished loading --- */
+var arsOrigInit = init;
+init = function(){
+  arsOrigInit();
+  arsApplyMode();
+  arsPrefill();
+};
+
+/* ===================== END OF PATCH ===================== */
 
 </script>
 </body>
