@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Suspension Work Request — A-Ride Suspension</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --graphite:#23272E;
+  --graphite-deep:#191C21;
+  --sheet:#EDEFF2;
+  --sheet-alt:#E2E6EA;
+  --ink:#0E1116;
+  --ink-soft:#4B535E;
+  --ano:#0F4FA8;
+  --ano-bright:#1B6BD6;
+  --gold:#B0842A;
+  --line:#C3CAD2;
+  --ok:#166534;
+  --bad:#A3211B;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--graphite);
+  color:var(--ink);
+  font-family:"Archivo",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:16px;
+  line-height:1.5;
+  -webkit-text-size-adjust:100%;
+}
+.wrap{max-width:640px;margin:0 auto;padding:0 0 64px}
+
+/* ---------- masthead: a shop work order header ---------- */
+.masthead{
+  background:var(--graphite-deep);
+  color:#EDEFF2;
+  padding:26px 20px 22px;
+  border-bottom:3px solid var(--gold);
+}
+.shop{
+  font-variation-settings:"wdth" 112,"wght" 800;
+  font-size:26px;
+  line-height:1.05;
+  letter-spacing:-0.015em;
+  margin:0;
+}
+.shop span{color:var(--gold)}
+.masthead p{
+  margin:10px 0 0;
+  color:#A8B2BE;
+  font-size:15px;
+  max-width:46ch;
+}
+.ticket{
+  margin-top:18px;
+  padding-top:14px;
+  border-top:1px solid #383E47;
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  font-size:13.5px;
+  color:#8C97A4;
+}
+.ticket b{
+  display:block;
+  color:#EDEFF2;
+  font-variation-settings:"wght" 700;
+  font-size:15px;
+}
+
+/* ---------- sheet ---------- */
+.sheet{background:var(--sheet);padding:4px 20px 28px}
+fieldset{border:0;margin:0;padding:26px 0 4px;border-top:1px solid var(--line)}
+fieldset:first-of-type{border-top:0}
+legend{
+  padding:0;
+  font-variation-settings:"wght" 700;
+  font-size:19px;
+  letter-spacing:-0.01em;
+}
+.hint{margin:4px 0 18px;color:var(--ink-soft);font-size:14.5px;max-width:52ch}
+
+label{display:block;margin:0 0 6px;font-size:14.5px;font-variation-settings:"wght" 600}
+.req{color:var(--bad)}
+.field{margin-bottom:16px}
+.row{display:flex;gap:12px}
+.row>*{flex:1;min-width:0}
+.row>.field{display:flex;flex-direction:column}
+.row>.field>label{flex:1 0 auto}
+
+input[type=text],input[type=tel],input[type=email],input[type=number],select,textarea{
+  width:100%;
+  padding:11px 12px;
+  font:inherit;
+  font-size:16px;
+  color:var(--ink);
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:3px;
+  appearance:none;
+}
+select{
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8'><path d='M1 1l5 5 5-5' fill='none' stroke='%234B535E' stroke-width='1.6'/></svg>");
+  background-repeat:no-repeat;
+  background-position:right 12px center;
+  padding-right:34px;
+}
+textarea{min-height:110px;resize:vertical}
+input:focus,select:focus,textarea:focus{
+  outline:2px solid var(--ano);
+  outline-offset:1px;
+  border-color:var(--ano);
+}
+input.invalid,select.invalid{border-color:var(--bad);background:#FDF3F2}
+
+/* ---------- choices ---------- */
+.choices{display:grid;gap:8px;margin-bottom:6px}
+.choice{
+  display:flex;
+  align-items:flex-start;
+  gap:11px;
+  padding:12px 13px;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:3px;
+  cursor:pointer;
+}
+.choice input{margin:2px 0 0;width:19px;height:19px;flex:none;accent-color:var(--ano)}
+.choice:has(input:checked){border-color:var(--ano);background:#F1F6FD;box-shadow:inset 3px 0 0 var(--ano)}
+.choice:has(input:focus-visible){outline:2px solid var(--ano);outline-offset:1px}
+.choice .t{flex:1}
+.choice .n{font-variation-settings:"wght" 600;font-size:15.5px}
+.choice .d{display:block;color:var(--ink-soft);font-size:13.5px;margin-top:2px}
+.choice .p{font-size:13.5px;color:var(--ink-soft);white-space:nowrap;padding-top:2px}
+
+.tags{display:flex;flex-wrap:wrap;gap:7px}
+.tag{position:relative}
+.tag input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
+.tag span{
+  display:block;
+  padding:8px 13px;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:100px;
+  font-size:14.5px;
+}
+.tag input:checked+span{background:var(--ano);border-color:var(--ano);color:#fff;font-variation-settings:"wght" 600}
+.tag input:focus-visible+span{outline:2px solid var(--ano);outline-offset:2px}
+
+/* ---------- submit ---------- */
+.submit-bar{padding:26px 0 0;border-top:1px solid var(--line);margin-top:26px}
+button.send{
+  width:100%;
+  padding:16px;
+  font:inherit;
+  font-size:17px;
+  font-variation-settings:"wght" 700;
+  color:#fff;
+  background:var(--ano);
+  border:0;
+  border-radius:3px;
+  cursor:pointer;
+}
+button.send:hover{background:var(--ano-bright)}
+button.send:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+button.send[disabled]{opacity:.6;cursor:progress}
+.fineprint{margin:14px 0 0;font-size:13.5px;color:var(--ink-soft)}
+.errorbox{
+  margin:0 0 16px;
+  padding:12px 14px;
+  background:#FDF3F2;
+  border-left:4px solid var(--bad);
+  color:#7A1712;
+  font-size:14.5px;
+  display:none;
+}
+.errorbox.show{display:block}
+.flag{
+  margin:14px 0 0;
+  padding:12px 14px;
+  background:#FBF4E4;
+  border-left:4px solid var(--gold);
+  color:#5C4611;
+  font-size:14px;
+  line-height:1.5;
+}
+
+/* ---------- confirmation ---------- */
+.done{display:none;background:var(--sheet);padding:40px 20px 44px;text-align:left}
+.done.show{display:block}
+.done h2{margin:0 0 10px;font-size:24px;font-variation-settings:"wght" 700;letter-spacing:-0.015em}
+.done p{margin:0 0 14px;color:var(--ink-soft);max-width:50ch}
+.done .num{
+  display:inline-block;
+  margin:6px 0 18px;
+  padding:9px 14px;
+  background:var(--graphite-deep);
+  color:#EDEFF2;
+  border-radius:3px;
+  font-variation-settings:"wght" 700;
+  letter-spacing:.04em;
+}
+.copybtn{
+  padding:11px 16px;font:inherit;font-size:15px;font-variation-settings:"wght" 600;
+  background:#fff;color:var(--ink);border:1px solid var(--line);border-radius:3px;cursor:pointer;
+}
+.copybtn:focus-visible{outline:2px solid var(--ano);outline-offset:2px}
+.foot{padding:20px;color:#8C97A4;font-size:13.5px;text-align:center}
+.foot a{color:#C9D2DC}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media (min-width:560px){
+  .sheet{padding:4px 34px 34px}
+  .masthead{padding:34px 34px 26px}
+  .shop{font-size:32px}
+  .done{padding:48px 34px}
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <h1 class="shop">A-Ride <span>Suspension</span></h1>
+    <p>Fill in all fields below for the most accurate quote.</p>
+    <div class="ticket">
+      <div>Request number<b id="ticketNo">—</b></div>
+      <div style="text-align:right">Turnaround<b>2–4 days</b></div>
+    </div>
+  </header>
+
+  <main class="sheet" id="formArea">
+    <form id="reqForm" novalidate>
+
+      <div class="errorbox" id="errorBox"></div>
+
+      <fieldset>
+        <div class="field">
+          <label for="name">Name <span class="req">*</span></label>
+          <input type="text" id="name" name="name" autocomplete="name" required>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="phone">Phone <span class="req">*</span></label>
+            <input type="tel" id="phone" name="phone" autocomplete="tel" required>
+          </div>
+          <div class="field">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" autocomplete="email">
+          </div>
+        </div>
+        <div class="field">
+          <label for="city">City and state</label>
+          <input type="text" id="city" name="city" autocomplete="address-level2">
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Bike</legend>
+        <div class="row" style="margin-top:18px">
+          <div class="field">
+            <label for="year">Year <span class="req">*</span></label>
+            <select id="year" name="year" required></select>
+          </div>
+          <div class="field">
+            <label for="make">Make <span class="req">*</span></label>
+            <select id="make" name="make" required></select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="model">Model <span class="req">*</span></label>
+          <select id="model" name="model" required><option value="">Pick a make first</option></select>
+        </div>
+        <div class="field" id="otherBikeWrap" hidden>
+          <label for="otherBike">Type the bike out</label>
+          <input type="text" id="otherBike" name="bike_not_listed" placeholder="e.g. 2016 Husaberg FE 501">
+        </div>
+        <div class="field">
+          <label for="hours">Hours on the suspension</label>
+          <input type="text" id="hours" name="hours_on_suspension" placeholder="Rough guess is fine">
+        </div>
+        <div class="field">
+          <label for="springs">Spring rates on it now, if you know them</label>
+          <input type="text" id="springs" name="current_springs" placeholder="e.g. .48 fork / 5.4 shock — leave blank if unsure">
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Rider Data</legend>
+        <div class="row" style="margin-top:18px">
+          <div class="field">
+            <label for="weight">Weight, no gear (lbs) <span class="req">*</span></label>
+            <input type="number" id="weight" name="rider_weight" min="40" max="450" inputmode="numeric" required>
+          </div>
+          <div class="field">
+            <label for="height">Height</label>
+            <input type="text" id="height" name="rider_height" placeholder="e.g. 5'10&quot;">
+          </div>
+        </div>
+        <div class="field">
+          <label for="skill">Skill level <span class="req">*</span></label>
+          <select id="skill" name="skill_level" required>
+            <option value="">Choose one</option>
+            <option>Beginner — still learning the track</option>
+            <option>Novice / C class</option>
+            <option>Intermediate / B class</option>
+            <option>Expert / A class</option>
+            <option>Pro</option>
+            <option>Vet B</option>
+            <option>Vet A</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Where you ride <span class="req">*</span></label>
+          <p class="hint" style="margin-bottom:10px">Pick everything that applies.</p>
+          <div class="tags" id="terrain">
+            <label class="tag"><input type="checkbox" name="terrain" value="Motocross track"><span>Motocross track</span></label>
+            <label class="tag"><input type="checkbox" name="terrain" value="Harescramble"><span>Harescramble</span></label>
+            <label class="tag"><input type="checkbox" name="terrain" value="Enduro"><span>Enduro</span></label>
+            <label class="tag"><input type="checkbox" name="terrain" value="Woods and trail"><span>Woods and trail</span></label>
+            <label class="tag"><input type="checkbox" name="terrain" value="Desert or open"><span>Desert or open</span></label>
+            <label class="tag"><input type="checkbox" name="terrain" value="Sand"><span>Sand</span></label>
+            <label class="tag"><input type="checkbox" name="terrain" value="Supercross or arenacross"><span>SX / arenacross</span></label>
+            <label class="tag"><input type="checkbox" name="terrain" value="Dual sport or adventure"><span>Dual sport</span></label>
+            <label class="tag"><input type="checkbox" name="terrain" value="Track or supermoto"><span>Supermoto</span></label>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Suspension Service</legend>
+        <p class="hint">Pick everything you're interested in. Prices below cover labor. Seals, bushings and springs are quoted separately once I know what your bike needs.</p>
+        <div class="choices" id="services"></div>
+        <div class="flag" id="airForkFlag" hidden>
+          Heads up on lowering: some KTM, Husqvarna and GasGas models use the WP air fork,
+          which can't be lowered internally. I'll check your exact model and tell you either
+          way in the quote — no need to look it up.
+        </div>
+        <div class="field" style="margin-top:20px">
+          <label for="springsWanted">Springs</label>
+          <p class="hint" style="margin-bottom:10px">If your spring rates are wrong for your weight, do you want them priced in the quote?</p>
+          <select id="springsWanted" name="springs_quote">
+            <option value="">Choose one</option>
+            <option>Yes — quote springs if I need them</option>
+            <option>No — labor only for now</option>
+          </select>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Suspension Complaints</legend>
+        <p class="hint">This is the part I care about most. Check what sounds familiar, then tell me about it in your own words.</p>
+        <div class="field">
+          <div class="tags" id="symptoms">
+            <label class="tag"><input type="checkbox" name="symptoms" value="Harsh over small chop"><span>Harsh on small chop</span></label>
+            <label class="tag"><input type="checkbox" name="symptoms" value="Deflects off square edges"><span>Deflects off square edges</span></label>
+            <label class="tag"><input type="checkbox" name="symptoms" value="Kicks or swaps in braking bumps"><span>Kicks in braking bumps</span></label>
+            <label class="tag"><input type="checkbox" name="symptoms" value="Dives under braking"><span>Dives under braking</span></label>
+            <label class="tag"><input type="checkbox" name="symptoms" value="Bottoms hard on landings"><span>Bottoms on landings</span></label>
+            <label class="tag"><input type="checkbox" name="symptoms" value="Rides too low in the stroke"><span>Sits too low</span></label>
+            <label class="tag"><input type="checkbox" name="symptoms" value="Front end pushes in corners"><span>Front pushes in corners</span></label>
+            <label class="tag"><input type="checkbox" name="symptoms" value="Rear steps out or wanders"><span>Rear steps out</span></label>
+            <label class="tag"><input type="checkbox" name="symptoms" value="Headshake at speed"><span>Headshake at speed</span></label>
+            <label class="tag"><input type="checkbox" name="symptoms" value="Fades as the moto goes on"><span>Fades late in a moto</span></label>
+            <label class="tag"><input type="checkbox" name="symptoms" value="Leaking seals"><span>Leaking seals</span></label>
+            <label class="tag"><input type="checkbox" name="symptoms" value="Nothing wrong, just want it set up for me"><span>Nothing wrong — want it set up</span></label>
+          </div>
+        </div>
+        <div class="field">
+          <label for="notes">Tell me more</label>
+          <textarea id="notes" name="notes" placeholder="What you've already tried, clicker settings, sag numbers, tracks you ride, anything else."></textarea>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Timing</legend>
+        <div class="field">
+          <label for="deadline">When you need it back</label>
+          <select id="deadline" name="deadline">
+            <option value="">No rush</option>
+            <option>Before my next race</option>
+            <option>Within two weeks</option>
+            <option>Within a month</option>
+            <option>Off-season — take your time</option>
+          </select>
+        </div>
+        <div class="field" id="raceDateWrap">
+          <label for="raceDate">Date you need it by, if you have one</label>
+          <input type="text" id="raceDate" name="needed_by" placeholder="e.g. April 12">
+        </div>
+      </fieldset>
+
+      <div class="submit-bar">
+        <button type="submit" class="send" id="sendBtn">Send my request</button>
+        <p class="fineprint">No payment now, and nothing is booked until you approve the quote I send back.</p>
+      </div>
+    </form>
+  </main>
+
+  <section class="done" id="doneArea" aria-live="polite">
+    <h2>Got it — your request is in.</h2>
+    <div class="num" id="doneTicket">—</div>
+    <p id="doneMsg">I'll look it over and send a quote with parts, labor and turnaround. If anything's unclear I'll call you first.</p>
+    <p>Hang onto your request number — mention it when we talk and I'll pull it right up.</p>
+    <button class="copybtn" id="copyBtn" type="button">Copy my answers</button>
+  </section>
+
+  <p class="foot">A-Ride Suspension · Questions before you send this? Call or text.</p>
+</div>
+
+<script>
+/* =========================================================================
+   EDIT THIS BLOCK — everything you'd want to change lives here.
+   ========================================================================= */
+const CONFIG = {
+
+  // 1. Where submissions go. Sign up free at formspree.io, make a form,
+  //    and paste the endpoint it gives you here. Until you do, the form
+  //    falls back to opening the customer's email app with everything filled in.
+  formspreeEndpoint: "",          // e.g. "https://formspree.io/f/xabcdefg"
+
+  // 2. Your email — used only for the fallback above.
+  fallbackEmail: "you@a-ridesuspension.com",
+
+  // 3. Your invoice builder URL. Each submission you receive will include a
+  //    one-click link that opens the builder with this customer pre-loaded.
+  invoiceBuilderUrl: "https://coryhutter.github.io/a-ride-card/a-ride-invoice-builder.html",
+
+  // 4. Service menu. Edit names, descriptions and starting prices freely.
+  services: [
+    { id:"fork_service",  name:"Fork Rebuild",          desc:"Complete tear down, clean, inspect for wear. Includes oil. Wear parts are extra.", price:"$225" },
+    { id:"shock_service", name:"Shock Rebuild",         desc:"Complete tear down, clean, inspect for wear. Includes oil. Wear parts are extra.", price:"$175" },
+    { id:"fork_revalve",  name:"Fork Revalve",         desc:"Fork rebuild plus modifications to the compression, rebound and mid-valve components specifically to your weight, height and ability.", price:"$550" },
+    { id:"shock_revalve", name:"Shock Revalve",        desc:"Shock rebuild plus modifications to the compression, rebound and adjuster (when needed) components specifically to your weight, height and ability.", price:"$375" },
+    { id:"lowering",      name:"Lowering / Stroke Reduction", desc:"Lowering in 1 or 2 inch increments. Done internally and not permanent. (Except WP air fork.)", price:"$200" }
+  ],
+
+  // 5. Bike list. Add or remove models as you like.
+  yearsFrom: 1998,
+  yearsTo: new Date().getFullYear() + 1,
+  bikes: {
+    "Honda":["CRF450R","CRF450RWE","CRF450RX","CRF450X","CRF450L","CRF300L","CRF250R","CRF250RX","CRF250X","CRF150R","CRF125F","CRF110F","CR250R","CR125R","XR650L"],
+    "Yamaha":["YZ450F","YZ450FX","YZ250F","YZ250FX","YZ250","YZ250X","YZ125","YZ125X","YZ85","YZ65","WR450F","WR250F","TT-R125"],
+    "Kawasaki":["KX450","KX450X","KX250","KX250X","KX112","KX100","KX85","KX65","KLX300R","KLX140"],
+    "Suzuki":["RM-Z450","RM-Z250","RM250","RM125","RM85","DR-Z400"],
+    "KTM":["450 SX-F","350 SX-F","250 SX-F","250 SX","150 SX","125 SX","450 XC-F","350 XC-F","300 XC","300 XC-W","250 XC","250 XC-W","500 EXC-F","350 EXC-F","300 EXC","85 SX","65 SX","50 SX"],
+    "Husqvarna":["FC 450","FC 350","FC 250","TC 250","TC 125","FX 450","FX 350","TX 300","FE 501","FE 350","TE 300","TE 250","TC 85","TC 65","TC 50"],
+    "GasGas":["MC 450F","MC 350F","MC 250F","MC 250","MC 125","EX 450F","EX 350F","EC 300","EC 250","MC 85","MC 65","MC 50"],
+    "Beta":["480 RR","430 RR","390 RR","350 RR","300 RR","250 RR","200 RR","125 RR","Xtrainer 300"],
+    "Sherco":["300 SEF","250 SEF","300 SE","250 SE","125 SE"],
+    "Stark":["Varg","Varg EX"],
+    "Not listed":[]
+  }
+};
+/* ======================= END OF EDITABLE BLOCK ======================== */
+
+const $ = id => document.getElementById(id);
+
+/* ---- request number ---- */
+const d = new Date();
+const pad = n => String(n).padStart(2,"0");
+const ticket = "ARS-" + String(d.getFullYear()).slice(2) + pad(d.getMonth()+1) + pad(d.getDate())
+             + "-" + Math.floor(100 + Math.random()*900);
+$("ticketNo").textContent = ticket;
+$("doneTicket").textContent = ticket;
+
+/* ---- years ---- */
+const yearSel = $("year");
+yearSel.appendChild(new Option("Choose","",true,true));
+for (let y = CONFIG.yearsTo; y >= CONFIG.yearsFrom; y--) yearSel.appendChild(new Option(y, y));
+
+/* ---- makes and cascading models ---- */
+const makeSel = $("make"), modelSel = $("model");
+makeSel.appendChild(new Option("Choose","",true,true));
+Object.keys(CONFIG.bikes).forEach(m => makeSel.appendChild(new Option(m, m)));
+
+makeSel.addEventListener("change", () => {
+  const models = CONFIG.bikes[makeSel.value] || [];
+  modelSel.innerHTML = "";
+  modelSel.appendChild(new Option(models.length ? "Choose" : "Type it in below", "", true, true));
+  models.forEach(m => modelSel.appendChild(new Option(m, m)));
+  if (models.length) modelSel.appendChild(new Option("Not listed","Not listed"));
+  toggleOtherBike();
+});
+modelSel.addEventListener("change", toggleOtherBike);
+
+function toggleOtherBike(){
+  const needsText = makeSel.value === "Not listed" || modelSel.value === "Not listed";
+  $("otherBikeWrap").hidden = !needsText;
+  modelSel.required = !(makeSel.value === "Not listed");
+}
+
+/* ---- service menu ---- */
+const servicesBox = $("services");
+CONFIG.services.forEach(s => {
+  const l = document.createElement("label");
+  l.className = "choice";
+  l.innerHTML =
+    '<input type="checkbox" name="services" value="' + s.name + '">' +
+    '<span class="t"><span class="n">' + s.name + '</span>' +
+    '<span class="d">' + s.desc + '</span></span>' +
+    '<span class="p">' + s.price + '</span>';
+  servicesBox.appendChild(l);
+});
+
+/* ---- air fork heads-up when lowering is picked on a WP-equipped make ---- */
+const AIR_FORK_MAKES = ["KTM", "Husqvarna", "GasGas"];
+
+function airForkFlagged(){
+  const wantsLowering = checkedValues("services").some(v => v.indexOf("Lowering") === 0);
+  return wantsLowering && AIR_FORK_MAKES.includes(makeSel.value);
+}
+
+function updateAirForkFlag(){
+  $("airForkFlag").hidden = !airForkFlagged();
+}
+
+servicesBox.addEventListener("change", updateAirForkFlag);
+makeSel.addEventListener("change", updateAirForkFlag);
+
+/* ---- gather answers ---- */
+function checkedValues(name){
+  return Array.from(document.querySelectorAll('input[name="'+name+'"]:checked')).map(i => i.value);
+}
+
+function collect(){
+  const bike = makeSel.value === "Not listed" || modelSel.value === "Not listed"
+    ? ($("year").value + " " + $("otherBike").value).trim()
+    : ($("year").value + " " + makeSel.value + " " + modelSel.value).trim();
+
+  return {
+    request_number: ticket,
+    submitted: d.toLocaleString(),
+    name: $("name").value.trim(),
+    phone: $("phone").value.trim(),
+    email: $("email").value.trim(),
+    city: $("city").value.trim(),
+    bike: bike,
+    year: $("year").value,
+    make: makeSel.value,
+    model: modelSel.value === "Not listed" ? $("otherBike").value.trim() : modelSel.value,
+    hours_on_suspension: $("hours").value.trim(),
+    current_springs: $("springs").value.trim(),
+    rider_weight: $("weight").value,
+    rider_height: $("height").value.trim(),
+    skill_level: $("skill").value,
+    terrain: checkedValues("terrain").join(", "),
+    services_wanted: checkedValues("services").join(", "),
+    fork_check: airForkFlagged() ? "CHECK WP AIR FORK before quoting lowering" : "",
+    springs_quote: $("springsWanted").value,
+    symptoms: checkedValues("symptoms").join(", "),
+    notes: $("notes").value.trim(),
+    deadline: $("deadline").value,
+    needed_by: $("raceDate").value.trim()
+  };
+}
+
+/* ---- handoff link into the invoice builder ---- */
+function handoffLink(data){
+  if (!CONFIG.invoiceBuilderUrl) return "";
+  const q = new URLSearchParams({
+    ref: data.request_number,
+    customer: data.name,
+    phone: data.phone,
+    email: data.email,
+    year: data.year,
+    make: data.make,
+    model: data.model,
+    weight: data.rider_weight,
+    skill: data.skill_level,
+    services: data.services_wanted
+  });
+  return CONFIG.invoiceBuilderUrl + (CONFIG.invoiceBuilderUrl.includes("?") ? "&" : "?") + q.toString();
+}
+
+/* ---- plain-text version, used for the email fallback and the copy button ---- */
+function asText(data){
+  const label = {
+    request_number:"Request", submitted:"Submitted", name:"Name", phone:"Phone", email:"Email",
+    city:"City", bike:"Bike", hours_on_suspension:"Hours on suspension",
+    current_springs:"Current springs", rider_weight:"Rider weight, no gear (lbs)", rider_height:"Height",
+    skill_level:"Skill", terrain:"Rides", services_wanted:"Wants", fork_check:"Fork check",
+    springs_quote:"Springs", symptoms:"Complaints", notes:"Notes", deadline:"Timing", needed_by:"Needed by"
+  };
+  return Object.keys(label)
+    .filter(k => data[k])
+    .map(k => label[k] + ": " + data[k])
+    .join("\n");
+}
+
+/* ---- validation ---- */
+const REQUIRED = [
+  ["name","Your name"],
+  ["phone","A phone number"],
+  ["year","The bike's year"],
+  ["make","The bike's make"],
+  ["weight","Your weight"],
+  ["skill","Your skill level"]
+];
+
+function validate(){
+  const missing = [];
+  document.querySelectorAll(".invalid").forEach(e => e.classList.remove("invalid"));
+
+  REQUIRED.forEach(([id,friendly]) => {
+    const el = $(id);
+    if (!el.value.trim()){ missing.push(friendly); el.classList.add("invalid"); }
+  });
+
+  if (makeSel.value && makeSel.value !== "Not listed" && !modelSel.value){
+    missing.push("The bike's model"); modelSel.classList.add("invalid");
+  }
+  if (makeSel.value === "Not listed" && !$("otherBike").value.trim()){
+    missing.push("The bike, typed out"); $("otherBike").classList.add("invalid");
+  }
+  if (!checkedValues("terrain").length) missing.push("Where you ride");
+  if (!checkedValues("services").length) missing.push("At least one service");
+
+  const box = $("errorBox");
+  if (missing.length){
+    box.textContent = "Still needed: " + missing.join(", ") + ".";
+    box.classList.add("show");
+    box.scrollIntoView({behavior:"smooth", block:"center"});
+    return false;
+  }
+  box.classList.remove("show");
+  return true;
+}
+
+/* ---- submit ---- */
+let lastText = "";
+
+$("reqForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  if (!validate()) return;
+
+  const data = collect();
+  const link = handoffLink(data);
+  if (link) data.open_in_invoice_builder = link;
+  data._subject = "Suspension request " + data.request_number + " — " + data.name + " — " + data.bike;
+  lastText = asText(data);
+
+  const btn = $("sendBtn");
+  btn.disabled = true;
+  btn.textContent = "Sending…";
+
+  if (!CONFIG.formspreeEndpoint){
+    // No endpoint set yet — hand it off to the customer's email app instead.
+    const body = encodeURIComponent(lastText + (link ? "\n\nBuilder link: " + link : ""));
+    window.location.href = "mailto:" + CONFIG.fallbackEmail
+      + "?subject=" + encodeURIComponent(data._subject) + "&body=" + body;
+    showDone("Your email app should be opening with everything filled in — just hit send.");
+    return;
+  }
+
+  try {
+    const res = await fetch(CONFIG.formspreeEndpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Accept": "application/json" },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error("bad response");
+    showDone();
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = "Send my request";
+    const box = $("errorBox");
+    box.textContent = "That didn't go through. Check your connection and try again, or copy your answers and text them over.";
+    box.classList.add("show");
+    box.scrollIntoView({behavior:"smooth", block:"center"});
+  }
+});
+
+function showDone(msg){
+  if (msg) $("doneMsg").textContent = msg;
+  $("formArea").style.display = "none";
+  $("doneArea").classList.add("show");
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+
+$("copyBtn").addEventListener("click", async () => {
+  const text = lastText || asText(collect());
+  try {
+    await navigator.clipboard.writeText(text);
+    $("copyBtn").textContent = "Copied";
+  } catch {
+    $("copyBtn").textContent = "Couldn't copy — select and copy manually";
+  }
+});
+</script>
+</body>
+</html>
