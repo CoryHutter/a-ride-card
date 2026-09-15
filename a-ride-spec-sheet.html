@@ -56,6 +56,9 @@
   .seg span{display:block;text-align:center;padding:9px 6px;font-weight:600;background:#fff}
   .seg input:checked+span{background:var(--ink);color:#fff}
   .seg input:focus-visible+span{outline:3px solid var(--gold);outline-offset:-3px}
+  .low-amt{display:none;margin-top:10px}
+  .form-col:has(input[name=fLower][value=low]:checked) #fLowWrap,
+  .form-col:has(input[name=sLower][value=low]:checked) #sLowWrap{display:block}
   .form-col:has(input[name=forkType][value=air]:checked) .coil-only{display:none}
   .form-col:has(input[name=forkType][value=air]:checked) .air-only{display:block!important}
   .hidden{display:none!important}
@@ -164,7 +167,7 @@
         <div class="field has-unit air-only hidden"><label for="fAir">Air pressure</label><input id="fAir" data-k="fAir" inputmode="decimal"><span class="unit">psi</span></div>
         <div class="field has-unit"><label for="fHeight">Fork height</label><input id="fHeight" data-k="fHeight" inputmode="decimal"><span class="unit">mm above clamp</span></div>
         <div class="full"><label>Fork ride height</label>
-          <div class="seg" role="radiogroup"><label><input type="radio" name="fLower" value="std" checked><span>Standard</span></label><label><input type="radio" name="fLower" value="1"><span>Lowered 1"</span></label><label><input type="radio" name="fLower" value="2"><span>Lowered 2"</span></label></div>
+          <div class="seg" role="radiogroup"><label><input type="radio" name="fLower" value="std" checked><span>Standard</span></label><label><input type="radio" name="fLower" value="low"><span>Lowering / stroke reduction</span></label></div><div class="low-amt" id="fLowWrap"><label for="fLowAmt">Lowering / stroke reduction amount</label><input id="fLowAmt" data-k="fLowAmt" placeholder="Enter amount"></div>
         </div>
       </div>
     </fieldset>
@@ -175,11 +178,11 @@
         <div class="field has-unit"><label for="sHsc">High speed comp.</label><input id="sHsc" data-k="sHsc" inputmode="decimal"><span class="unit">turns out</span></div>
         <div class="field has-unit"><label for="sLsc">Low speed comp.</label><input id="sLsc" data-k="sLsc" inputmode="numeric"><span class="unit">clicks out</span></div>
         <div class="field has-unit"><label for="sReb">Rebound</label><input id="sReb" data-k="sReb" inputmode="numeric"><span class="unit">clicks out</span></div>
-        <div class="field has-unit"><label for="sRate">Spring rate</label><input id="sRate" data-k="sRate" inputmode="decimal"><span class="unit">N/mm</span></div>
+        <div class="field has-unit"><label for="sRate">Spring rate</label><input id="sRate" data-k="sRate" inputmode="decimal"><span class="unit">kg/mm</span></div>
         <div class="field has-unit"><label for="sPre">Spring preload</label><input id="sPre" data-k="sPre" inputmode="decimal"><span class="unit">mm</span></div>
         <div class="field has-unit"><label for="sSag">Recommended sag</label><input id="sSag" data-k="sSag" inputmode="decimal"><span class="unit">mm race</span></div>
         <div class="full"><label>Shock ride height</label>
-          <div class="seg" role="radiogroup"><label><input type="radio" name="sLower" value="std" checked><span>Standard</span></label><label><input type="radio" name="sLower" value="1"><span>Lowered 1"</span></label><label><input type="radio" name="sLower" value="2"><span>Lowered 2"</span></label></div>
+          <div class="seg" role="radiogroup"><label><input type="radio" name="sLower" value="std" checked><span>Standard</span></label><label><input type="radio" name="sLower" value="low"><span>Lowering / stroke reduction</span></label></div><div class="low-amt" id="sLowWrap"><label for="sLowAmt">Lowering / stroke reduction amount</label><input id="sLowAmt" data-k="sLowAmt" placeholder="Enter amount"></div>
         </div>
       </div>
     </fieldset>
@@ -229,7 +232,7 @@
           <div class="row"><span class="k">High speed compression</span><span class="v" data-o="sHsc" data-u="turns out"></span></div>
           <div class="row"><span class="k">Low speed compression</span><span class="v" data-o="sLsc" data-u="clicks out"></span></div>
           <div class="row"><span class="k">Rebound</span><span class="v" data-o="sReb" data-u="clicks out"></span></div>
-          <div class="row"><span class="k">Spring rate</span><span class="v" data-o="sRate" data-u="N/mm"></span></div>
+          <div class="row"><span class="k">Spring rate</span><span class="v" data-o="sRate" data-u="kg/mm"></span></div>
           <div class="row"><span class="k">Spring preload</span><span class="v" data-o="sPre" data-u="mm"></span></div>
           <div class="row"><span class="k">Recommended race sag</span><span class="v" data-o="sSag" data-u="mm"></span></div>
           <span class="height" data-o="sLowerFmt"></span>
@@ -256,7 +259,11 @@ const state = { forkType:'coil', fLower:'std', sLower:'std' };
 $('#date').value = new Date().toISOString().slice(0,10);
 
 function val(k){ const el = document.querySelector(`[data-k="${k}"]`); return el ? el.value.trim() : ''; }
-function lowerText(v){ return v==='std' ? 'Standard height' : `Lowered ${v}"`; }
+function lowerText(end){
+  if (state[end+'Lower']==='std') return 'Standard height';
+  const a = val(end+'LowAmt');
+  return 'Lowering / stroke reduction' + (a ? ': ' + a : '');
+}
 
 function render(){
   const d = {};
@@ -265,10 +272,12 @@ function render(){
   d.weightFmt = d.weight ? d.weight + ' lbs' : '';
   d.dateFmt = d.date ? new Date(d.date+'T12:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}) : '';
   d.forkTypeFmt = state.forkType==='air' ? 'Air' : 'Coil';
-  d.fLowerFmt = 'Fork: ' + lowerText(state.fLower);
-  d.sLowerFmt = 'Shock: ' + lowerText(state.sLower);
+  d.fLowerFmt = 'Fork: ' + lowerText('f');
+  d.sLowerFmt = 'Shock: ' + lowerText('s');
 
   $('#oilOut').dataset.u = $('#fOilUnit').value;
+  $('#fLowWrap').style.display = state.fLower==='low' ? 'block' : '';
+  $('#sLowWrap').style.display = state.sLower==='low' ? 'block' : '';
   $$('[data-o]').forEach(el => {
     const v = d[el.dataset.o] || '';
     const u = el.dataset.u;
@@ -322,16 +331,16 @@ function textSummary(){
     !air && line('Oil level', val('fOil'), $('#fOilUnit').value),
     air && line('Air pressure', val('fAir'), 'psi'),
     line('Fork height', val('fHeight'), 'mm'),
-    lowerText(state.fLower),
+    'Fork: ' + lowerText('f'),
     '',
     'SHOCK',
     line('High speed comp', val('sHsc'), 'turns out'),
     line('Low speed comp', val('sLsc'), 'clicks out'),
     line('Rebound', val('sReb'), 'clicks out'),
-    line('Spring rate', val('sRate'), 'N/mm'),
+    line('Spring rate', val('sRate'), 'kg/mm'),
     line('Preload', val('sPre'), 'mm'),
     line('Race sag', val('sSag'), 'mm'),
-    lowerText(state.sLower),
+    'Shock: ' + lowerText('s'),
     val('notes') ? '\nNotes: ' + val('notes') : null
   ].filter(x => x !== null && x !== false).join('\n');
 }
