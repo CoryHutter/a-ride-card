@@ -1,104 +1,123 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><title>A-Ride Setup · Murphy Hutter · Race bike (B)</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@600;700&family=Archivo:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap"><style>
-:root{--bg:#f1efeb;--card:#fff;--ink:#191b1f;--mute:#61656d;--line:#dcd8d1;--accent:#c8361f;--accent-soft:#f8e3df;--up:#1d6fb8;--down:#b86a1d;--display:'Saira Semi Condensed','Arial Narrow',sans-serif;--body:'Archivo',system-ui,sans-serif;--mono:'JetBrains Mono',ui-monospace,monospace}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121417;--card:#1b1e23;--ink:#eceef1;--mute:#9da3ad;--line:#2e333b;--accent:#ef5a40;--accent-soft:#3a1c17;--up:#79b4ec;--down:#e5a55f;color-scheme:dark}}
-:root[data-theme="dark"]{--bg:#121417;--card:#1b1e23;--ink:#eceef1;--mute:#9da3ad;--line:#2e333b;--accent:#ef5a40;--accent-soft:#3a1c17;--up:#79b4ec;--down:#e5a55f;color-scheme:dark}
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#13294b"><title>A-Ride Setup · Murphy Hutter · Race bike (B)</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;600;800&display=swap"><style>
 *{box-sizing:border-box}
-.rp{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;max-width:560px;margin:0 auto;padding:20px max(16px,env(safe-area-inset-right,0px)) 40px max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:20px}
-.rp .kick{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute)}
-.rp .brandbar{display:flex;justify-content:space-between;align-items:center;gap:12px}
-.rp .logo{font-family:var(--display);font-weight:700;font-size:22px;letter-spacing:.04em;text-transform:uppercase}
-.rp .logo span{color:var(--accent)}
-.rp .rider{background:var(--ink);color:var(--bg);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:10px}
-.rp .rider h1{margin:0;font-family:var(--display);font-weight:700;font-size:34px;line-height:1;text-transform:uppercase}
-.rp .rider .bike{font-size:17px;opacity:.85}
-.rp .pill{align-self:flex-start;background:var(--accent);color:#fff;font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:5px 11px;border-radius:999px}
-.rp .vin{font-family:var(--mono);font-size:12px;opacity:.7}
-.rp .meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;border-top:1px solid rgba(127,127,127,.35);padding-top:12px}
-.rp .meta div{display:flex;flex-direction:column;gap:2px;min-width:0}
-.rp .meta .kick{color:inherit;opacity:.65}
-.rp .meta b{font-family:var(--mono);font-size:14px}
-.rp .due{color:var(--accent)}
-.rp h2{font-family:var(--display);font-weight:700;font-size:24px;text-transform:uppercase;margin:0 0 8px;display:flex;justify-content:space-between;align-items:baseline;gap:10px}
-.rp h2 small{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.1em;color:var(--mute)}
-.rp .sheet{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
-.rp .line{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:48px;padding:6px 14px;border-bottom:1px solid var(--line)}
-.rp .line:last-child{border-bottom:0}
-.rp .line span{color:var(--mute);font-size:15px}
-.rp .line b{font-family:var(--mono);font-size:16px;text-align:right}
-.rp .line b small{font-family:var(--body);font-weight:400;color:var(--mute);font-size:13px;margin-left:4px}
-.rp .note{background:var(--accent-soft);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:6px}
-.rp .note p{margin:0;font-size:15px;white-space:pre-line}
-.rp .hist,.rp .units{display:flex;flex-direction:column;gap:10px}
-.rp .entry{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
-.rp .entry .head{display:flex;justify-content:space-between;gap:10px;margin-bottom:6px}
-.rp .entry .head .kick{white-space:nowrap}
-.rp .chg{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-top:1px solid var(--line);font-size:14px}
-.rp .chg span:first-child{color:var(--mute);min-width:0}
-.rp .chg span:last-child{font-family:var(--mono);text-align:right;white-space:nowrap}
-.rp .pct{font-weight:700;margin-left:6px}.rp .pct.up{color:var(--up)}.rp .pct.down{color:var(--down)}
-.rp .entry p{margin:8px 0 0;font-size:14px;color:var(--mute)}
-.rp .unit{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;color:var(--ink);text-decoration:none;min-height:64px}
+.rp{background:#c7cfd9;color:#13294b;font-family:'Archivo',system-ui,sans-serif;font-size:16px;line-height:1.4;max-width:560px;margin:0 auto;padding:20px max(16px,env(safe-area-inset-right,0px)) 32px max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:16px}
+.rp .disp{font-family:'Anton',Impact,sans-serif;font-weight:400}
+.rp .top{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#13294b;border-radius:4px;padding:10px 14px}
+.rp .top .logo{font-family:'Anton',Impact,'Arial Narrow',sans-serif;font-size:24px;letter-spacing:.02em;color:#f2b705;white-space:nowrap}
+.rp .top .logo span{color:#6fa8f5}
+.rp .top .id{font-size:12px;font-weight:600;color:#b9c6da;white-space:nowrap}
+.rp .board{background:#13294b;color:#fff;border-radius:4px;border:6px solid #f5f6f8;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.rp .riderb{padding:18px;gap:6px}
+.rp .lab{font-size:12px;font-weight:600;letter-spacing:.14em;color:#b9c6da}
+.rp .name{font-family:'Anton',Impact,sans-serif;font-size:56px;line-height:.95;text-transform:uppercase;overflow-wrap:anywhere}
+.rp .bikeline{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:4px;font-size:16px}
+.rp .badge{background:#f2b705;color:#13294b;font-family:'Anton',Impact,sans-serif;font-size:20px;padding:2px 10px;border-radius:3px}
+.rp .vin{font-size:12px;color:#b9c6da}
+.rp .tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.rp .tile{background:#f5f6f8;border-radius:4px;padding:10px;min-width:0}
+.rp .tile span{display:block;font-size:12px;font-weight:600;color:#4a5a70}
+.rp .tile b{display:block;font-weight:800;font-size:18px}
+.rp .tile b.gold{color:#7a5a00}
+.rp .bhead{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.rp .bhead .t{font-family:'Anton',Impact,sans-serif;font-size:30px;color:#f2b705}
+.rp .bhead .m{font-size:13px;color:#b9c6da}
+.rp .bigs{display:grid;gap:10px}
+.rp .big{border-top:2px solid #34507d;padding-top:6px;min-width:0}
+.rp .big span{display:block;font-size:13px;color:#b9c6da}
+.rp .big b{font-family:'Anton',Impact,sans-serif;font-weight:400;font-size:34px;line-height:1.05}
+.rp .big small{font-size:13px;margin-left:3px}
+.rp .rows{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));row-gap:8px;column-gap:10px;font-size:16px;border-top:2px solid #34507d;padding-top:10px}
+.rp .rows span{color:#b9c6da}
+.rp .rows b{text-align:right}
+.rp .foot{font-size:12px;color:#b9c6da}
+.rp .bnote{border-top:2px solid #34507d;padding-top:10px;font-size:15px;line-height:1.45;white-space:pre-line;overflow-wrap:anywhere}
+.rp .bnote span{display:block;font-size:12px;font-weight:600;letter-spacing:.14em;color:#f2b705;margin-bottom:4px}
+.rp .log{background:#f5f6f8;border-radius:4px;overflow:hidden;display:flex;flex-direction:column}
+.rp .loghead{background:#f2b705;color:#13294b;padding:10px 16px;display:flex;justify-content:space-between;align-items:baseline}
+.rp .loghead .t{font-family:'Anton',Impact,sans-serif;font-size:22px;letter-spacing:.03em}
+.rp .loghead span{font-size:12px;font-weight:600}
+.rp .entry{padding:14px 16px;display:flex;flex-direction:column;gap:4px;font-size:15px;border-top:2px solid #dde2e9}
+.rp .entry:first-of-type{border-top:0}
+.rp .entry .r{display:flex;justify-content:space-between;gap:12px}
+.rp .entry .r span:last-child{text-align:right;white-space:nowrap}
+.rp .entry .d{color:#4a5a70}
+.rp .entry p{margin:2px 0 0;color:#4a5a70;font-size:14px;white-space:pre-line}
+.rp .book{display:flex;align-items:center;justify-content:center;min-height:56px;background:#13294b;color:#f2b705;border-radius:4px;font-family:'Anton',Impact,sans-serif;font-size:22px;letter-spacing:.04em;text-decoration:none;text-align:center;padding:0 12px}
+.rp .unit{display:flex;justify-content:space-between;align-items:center;gap:12px;background:#f5f6f8;border-radius:4px;padding:14px 16px;color:#13294b;text-decoration:none;min-height:64px}
 .rp .unit b{display:block;font-size:17px}
-.rp .unit span{display:block;color:var(--mute);font-size:14px}
-.rp .unit .go{font-family:var(--mono);font-size:13px;color:var(--accent);white-space:nowrap}
-.rp .book{display:flex;align-items:center;justify-content:center;min-height:54px;border-radius:14px;background:var(--accent);color:#fff;font:600 17px var(--body);text-decoration:none}
-.rp footer{font-size:13px;color:var(--mute);text-align:center}
-body{margin:0;background:var(--bg)}</style></head><body><div id="app"></div><script type="application/json" id="ride-data">{"rider":"Murphy Hutter","entryId":"KTM85-014-B","bike":"2026 KTM 85 SX · big wheel","bikeYear":"2026","bikeMake":"KTM","bikeModel":"85 SX","bikeExtra":"big wheel","bikeLabel":"Race bike (B)","vin":"123456","covers":"both","weight":"105 lb","serviceDue":"Apr 2027","date":"Oct 23, 2026","notes":"Good all-round setting for hardpack and intermediate. For deep sand, go 2 clicks firmer on fork and shock compression.","phone":"","fork":{"model":"WP XACT 43 mm","spring":"0.40","springUnit":"N/mm","oilLevel":"100","oilLevelUnit":"mm","oil":"WP SAE 4","comp":"12","reb":"14","height":"Flush"},"shock":{"model":"WP XACT","spring":"45","springUnit":"N/mm","raceSag":"88","staticSag":"28","compLow":"14","reb":"12"},"history":[{"date":"Oct 23, 2026","title":"Service update","note":"","changes":[]},{"date":"Oct 18, 2026","title":"Springs + revalve for rider weight","note":"Rider gained 12 lb since spring.","changes":[{"label":"Fork spring rate","from":"0.38","to":"0.40","unit":"N/mm"},{"label":"Fork oil level","from":"110","to":"100","unit":"mm"},{"label":"Shock spring rate","from":"42","to":"45","unit":"N/mm"}]}],"slug":"k7x2qm"}</script><script>function renderRiderPage(D, root) {
-  var FORK = [['spring','Spring rate','N/mm'],['oilLevel','Oil level','mm'],['oil','Oil',''],['comp','Compression','clicks out'],['reb','Rebound','clicks out'],['height','Fork height','']];
-  var SHOCK = [['spring','Spring rate','N/mm'],['raceSag','Race sag','mm'],['staticSag','Static sag','mm'],['compLow','Compression (low speed)','clicks out'],['compHigh','Compression (high speed)','turns out'],['reb','Rebound','clicks out']];
+.rp .unit span{display:block;color:#4a5a70;font-size:14px}
+.rp .unit .go{font-family:'Anton',Impact,sans-serif;font-size:18px;color:#13294b;background:#f2b705;border-radius:3px;padding:4px 10px;white-space:nowrap}
+html,body{margin:0;background:#c7cfd9}</style></head><body><div id="app"></div><script type="application/json" id="ride-data">{"rider":"Murphy Hutter","entryId":"KTM85-014-B","bike":"2026 KTM 85 SX · big wheel","bikeYear":"2026","bikeMake":"KTM","bikeModel":"85 SX","bikeExtra":"big wheel","bikeLabel":"Race bike (B)","vin":"123456","covers":"both","weight":"105 lb","date":"Oct 23, 2026","phone":"","fork":{"model":"WP XACT 43 mm","spring":"4.6","springUnit":"N/mm","oilLevel":"100","oilLevelUnit":"mm","comp":"12","reb":"14","setHeight":"Flush","preload":"5","preloadUnit":"mm"},"shock":{"model":"WP XACT","spring":"53","springUnit":"N/mm","raceSag":"88","compLow":"14","reb":"12","preload":"8","compHigh":"1.5"},"history":[{"date":"Oct 18, 2026","title":"Springs + revalve for rider weight","note":"Rider gained 12 lb since spring.\nGood all-round setting for hardpack and intermediate. For deep sand, go 2 clicks firmer on fork and shock compression.","changes":[{"label":"Fork spring rate","from":"4.4","to":"4.6","unit":"N/mm"},{"label":"Fork oil level","from":"110","to":"100","unit":"mm"},{"label":"Shock spring rate","from":"50","to":"53","unit":"N/mm"}]}],"slug":"k7x2qm","trackType":"MX"}</script><script>function renderRiderPage(D, root) {
   var covers = D.covers || 'both';
   function el(t, c, x) { var e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; }
+  function has(v) { return v !== undefined && v !== null && String(v).trim() !== ''; }
+  function unit(vals, k, def) { return (vals && vals[k + 'Unit']) || def; }
+  // spring rate display: fork kg/mm 0.47, fork N/mm 4.6, shock kg/mm 5.4, shock N/mm 53
+  function fmtSpring(part, v, u) { var n = parseFloat(v); if (isNaN(n)) return v; if (u === 'kg/mm') return n.toFixed(part === 'fork' ? 2 : 1); if (u === 'N/mm') return n.toFixed(part === 'fork' ? 1 : 0); return v; }
   root.textContent = '';
   var wrap = el('div', 'rp');
-  var bb = el('div', 'brandbar'); var logo = el('div', 'logo', 'A-Ride '); logo.appendChild(el('span', null, 'Suspension'));
-  bb.append(logo, el('div', 'kick', D.entryId || '')); wrap.appendChild(bb);
-  var r = el('div', 'rider');
-  var k = el('div', 'kick', covers === 'fork' ? 'Fork setup' : covers === 'shock' ? 'Shock setup' : 'Bike setup'); k.style.color = 'inherit'; k.style.opacity = '.65';
-  r.append(k, el('h1', null, D.rider || 'Rider'));
-  if (D.bikeLabel) r.appendChild(el('div', 'pill', D.bikeLabel));
-  r.appendChild(el('div', 'bike', D.bike || ''));
-  if (D.vin) r.appendChild(el('div', 'vin', 'VIN ending ' + D.vin));
-  var meta = el('div', 'meta');
-  [['Set up', D.date, ''], ['Weight', D.weight, ''], ['Service due', D.serviceDue, 'due']].forEach(function (m) {
-    var d = el('div'); d.append(el('span', 'kick', m[0])); d.append(el('b', m[2], m[1] || '—')); meta.appendChild(d);
+  var top = el('div', 'top'); var logo = el('div', 'logo', 'A-RIDE '); logo.appendChild(el('span', null, 'SUSPENSION'));
+  top.append(logo, el('div', 'id', D.entryId || '')); wrap.appendChild(top);
+  // rider board
+  var rb = el('div', 'board riderb');
+  rb.append(el('div', 'lab', covers === 'fork' ? 'RIDER · FORK' : covers === 'shock' ? 'RIDER · SHOCK' : 'RIDER'), el('div', 'name', D.rider || 'Rider'));
+  var label = D.bikeLabel || '', letter = '';
+  var m = label.match(/\(([A-Za-z0-9]{1,3})\)\s*$/); if (m) { letter = m[1].toUpperCase(); label = label.replace(m[0], '').trim(); }
+  var bl = el('div', 'bikeline'); if (letter) bl.appendChild(el('span', 'badge', letter));
+  bl.appendChild(el('span', null, [label, D.bike].filter(Boolean).join(' · ')));
+  rb.appendChild(bl);
+  if (D.vin) rb.appendChild(el('div', 'vin', 'VIN ending ' + D.vin));
+  wrap.appendChild(rb);
+  // tiles
+  var tiles = el('div', 'tiles');
+  [['SET UP', String(D.date || '—').replace(/,\s*\d{4}$/, ''), ''], ['WEIGHT', D.weight || '—', ''], ['TRACK', D.trackType || '—', 'gold']].forEach(function (t) {
+    var d = el('div', 'tile'); d.append(el('span', null, t[0]), el('b', t[2], t[1])); tiles.appendChild(d);
   });
-  r.appendChild(meta); wrap.appendChild(r);
-  function sheet(title, model, defs, vals) {
-    var rows = defs.filter(function (f) { return vals && vals[f[0]] !== undefined && String(vals[f[0]]).trim() !== ''; });
-    if (!rows.length) return;
-    var s = el('section'); var h = el('h2', null, title); if (model) h.appendChild(el('small', null, model)); s.appendChild(h);
-    var box = el('div', 'sheet');
-    rows.forEach(function (f) {
-      var unit = vals[f[0] + 'Unit'] || f[2]; var label = f[1];
-      if (f[0] === 'spring' && unit === 'PSI') label = 'Air pressure';
-      if (f[0] === 'oilLevel' && unit === 'cc') label = 'Oil volume';
-      var l = el('div', 'line'); var v = el('b', null, String(vals[f[0]])); if (unit) v.appendChild(el('small', null, unit)); l.append(el('span', null, label), v); box.appendChild(l);
-    });
-    s.appendChild(box); wrap.appendChild(s);
-  }
-  if (covers !== 'shock') sheet('Fork', D.fork && D.fork.model, FORK, D.fork);
-  if (covers !== 'fork') sheet('Shock', D.shock && D.shock.model, SHOCK, D.shock);
-  if (D.notes) { var n = el('div', 'note'); n.append(el('span', 'kick', 'Notes from Cory'), el('p', null, D.notes)); wrap.appendChild(n); }
-  if (D.history && D.history.length) {
-    var hs = el('section'); var hh = el('h2', null, 'Change history'); hh.appendChild(el('small', null, 'newest first')); hs.appendChild(hh);
-    var list = el('div', 'hist');
-    D.history.forEach(function (h) {
-      var e = el('article', 'entry'); var head = el('div', 'head'); head.append(el('b', null, h.title || 'Service'), el('span', 'kick', h.date || '')); e.appendChild(head);
-      (h.changes || []).forEach(function (c) {
-        var row = el('div', 'chg'); var right = el('span', null, c.from + ' → ' + c.to + (c.unit ? ' ' + c.unit : ''));
-        var a = parseFloat(c.from), b = parseFloat(c.to);
-        if (!isNaN(a) && !isNaN(b) && c.unit) {
-          if (/click|turn/.test(c.unit)) { var d = Math.round((b - a) * 100) / 100; right.appendChild(el('span', 'pct ' + (d > 0 ? 'up' : 'down'), (d > 0 ? '+' : '') + d)); }
-        }
-        row.append(el('span', null, c.label), right); e.appendChild(row);
+  wrap.appendChild(tiles);
+  // boards
+  function board(part, title, vals, bigs, rows, footer) {
+    if (!vals) return;
+    var bigList = bigs.filter(function (b) { return has(vals[b[0]]); });
+    var rowList = rows.filter(function (r) { return has(vals[r[0]]); });
+    if (!bigList.length && !rowList.length && !has(vals.notes)) return;
+    var b = el('div', 'board');
+    var h = el('div', 'bhead'); h.append(el('div', 't', title), el('div', 'm', vals.model || '')); b.appendChild(h);
+    if (bigList.length) {
+      var g = el('div', 'bigs'); g.style.gridTemplateColumns = 'repeat(' + bigList.length + ',minmax(0,1fr))';
+      bigList.forEach(function (x) { var c = el('div', 'big'); c.appendChild(el('span', null, x[1])); var v = el('b', null, String(vals[x[0]])); if (x[2]) v.appendChild(el('small', null, x[2])); c.appendChild(v); g.appendChild(c); });
+      b.appendChild(g);
+    }
+    if (rowList.length) {
+      var r = el('div', 'rows');
+      rowList.forEach(function (x) {
+        var u = unit(vals, x[0], x[2]); var lbl = x[1];
+        if (x[0] === 'spring' && u === 'PSI') lbl = 'Air pressure';
+        if (x[0] === 'oilLevel' && u === 'cc') lbl = 'Oil volume';
+        var val = x[0] === 'spring' ? fmtSpring(part, vals[x[0]], u) : vals[x[0]];
+        r.append(el('span', null, lbl), el('b', null, String(val) + (u ? ' ' + u : '')));
       });
-      if (h.note) e.appendChild(el('p', null, h.note));
-      list.appendChild(e);
-    });
-    hs.appendChild(list); wrap.appendChild(hs);
+      b.appendChild(r);
+    }
+    if (has(vals.notes)) { var nt = el('div', 'bnote'); nt.appendChild(el('span', null, 'NOTES')); nt.appendChild(document.createTextNode(String(vals.notes))); b.appendChild(nt); }
+    if (footer && bigList.length) b.appendChild(el('div', 'foot', footer));
+    wrap.appendChild(b);
   }
-  if (D.phone) { var a2 = el('a', 'book', 'Text A-Ride to book service'); a2.href = 'sms:' + String(D.phone).replace(/[^0-9+]/g, ''); wrap.appendChild(a2); }
-  wrap.appendChild(el('footer', null, 'Clicks are counted out from fully closed. Tap the tag anytime to see the current setup.'));
+  if (covers !== 'shock') board('fork', 'FORK', D.fork, [['comp', 'COMP', ''], ['reb', 'REB', '']], [['spring', 'Spring', 'N/mm'], ['oilLevel', 'Oil level', 'mm'], ['preload', 'Preload', 'mm'], ['setHeight', 'Set height', '']], '');
+  if (covers !== 'fork') board('shock', 'SHOCK', D.shock, [['compLow', 'LOW SPD COMP', ''], ['compHigh', 'HIGH SPD COMP', 'turns'], ['reb', 'REB', '']], [['spring', 'Spring', 'N/mm'], ['raceSag', 'Race sag', 'mm'], ['preload', 'Preload', 'mm']], '');
+  // service log
+  if (D.history && D.history.length) {
+    var log = el('div', 'log');
+    var lh = el('div', 'loghead'); lh.append(el('div', 't', 'SERVICE LOG'), el('span', null, 'Newest first')); log.appendChild(lh);
+    D.history.forEach(function (h) {
+      var e = el('div', 'entry');
+      var hr = el('div', 'r'); hr.append(el('b', null, h.title || 'Service'), el('span', 'd', h.date || '')); e.appendChild(hr);
+      (h.changes || []).forEach(function (c) { var cr = el('div', 'r'); cr.append(el('span', null, c.label), el('span', null, c.from + ' → ' + c.to + (c.unit ? ' ' + c.unit : ''))); e.appendChild(cr); });
+      if (h.note) e.appendChild(el('p', null, h.note));
+      log.appendChild(e);
+    });
+    wrap.appendChild(log);
+  }
+  if (D.phone) { var a = el('a', 'book', 'TEXT A-RIDE TO BOOK SERVICE'); a.href = 'sms:' + String(D.phone).replace(/[^0-9+]/g, ''); wrap.appendChild(a); }
   root.appendChild(wrap);
 };renderRiderPage(JSON.parse(document.getElementById("ride-data").textContent),document.getElementById("app"));</script></body></html>
