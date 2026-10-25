@@ -183,6 +183,20 @@ h1,h2{font-family:"Barlow Condensed",Impact,sans-serif;font-weight:600;letter-sp
   border:1px solid var(--line);background:var(--navy);color:var(--ink)}
 .acts button.primary{background:var(--gold);border-color:var(--gold);color:var(--navy)}
 .acts button:active{opacity:.75}
+.acts button.quote{border-color:var(--gold);color:var(--gold)}
+.qsheet{position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:16px}
+.qsheet.open{display:flex}
+.qpanel{background:var(--navy);border:1px solid var(--gold);border-radius:8px;width:100%;max-width:520px;
+  max-height:92vh;display:flex;flex-direction:column;padding:16px;gap:10px}
+.qpanel h3{font-family:"Barlow Condensed",sans-serif;font-size:20px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin:0}
+.qpanel .qto{font-size:12.5px;color:var(--muted)}
+.qpanel textarea{flex:1;min-height:260px;width:100%;background:transparent;color:var(--ink);border:1px solid var(--line);
+  border-radius:6px;padding:10px;font-family:"IBM Plex Mono",monospace;font-size:12px;line-height:1.45;resize:vertical}
+.qbtns{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.qbtns button{padding:12px 8px;border-radius:4px;font-family:"Barlow Condensed",sans-serif;font-weight:600;font-size:14px;
+  letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
+.qbtns button.primary{background:var(--gold);border-color:var(--gold);color:var(--navy)}
+.qbtns .full{grid-column:1/-1}
 
 .fab{position:fixed;left:12px;right:12px;bottom:12px;z-index:40;padding:15px;border:0;border-radius:8px;
   background:var(--gold);color:var(--navy);font-family:"Barlow Condensed",sans-serif;font-size:17px;
@@ -205,7 +219,7 @@ h1,h2{font-family:"Barlow Condensed",Impact,sans-serif;font-weight:600;letter-sp
 
 @media print{
   body{background:#fff;color:#000}
-  .catalog,.fab,.acts,.closebtn,.ticket::before{display:none !important}
+  .catalog,.fab,.acts,.closebtn,.ticket::before,.qsheet{display:none !important}
   .app{display:block;height:auto}
   .ticket{position:static;transform:none;background:#fff;color:#000;display:block}
   .t-head,.t-foot,.lines{background:#fff;border-color:#999}
@@ -297,6 +311,7 @@ h1,h2{font-family:"Barlow Condensed",Impact,sans-serif;font-weight:600;letter-sp
         <button id="addCustom">+ Custom line</button>
         <button id="exportCsv">Export CSV</button>
         <button id="clearAll">Clear</button>
+        <button class="quote" id="quoteBtn">Quote</button>
         <button class="primary" id="printBtn">Print / PDF</button>
       </div>
       <div class="print-only" style="margin-top:14px;font-size:11px;color:#444;border-top:1px solid #999;padding-top:8px">
@@ -307,6 +322,21 @@ h1,h2{font-family:"Barlow Condensed",Impact,sans-serif;font-weight:600;letter-sp
 </div>
 <button class="fab" id="fab"><span id="fabCount">Ticket &mdash; 0 lines</span><span id="fabTotal">$0.00</span></button>
 <div class="toast" id="toast"></div>
+<div class="qsheet" id="qsheet">
+  <div class="qpanel">
+    <h3>Send quote</h3>
+    <div class="qto" id="qTo"></div>
+    <textarea id="qText" spellcheck="false"></textarea>
+    <div class="qbtns">
+      <button class="primary" id="qSms">Text it</button>
+      <button class="primary" id="qMail">Email it</button>
+      <button id="qShare">Share&hellip;</button>
+      <button id="qCopy">Copy</button>
+      <button id="qPrint">Quote PDF</button>
+      <button id="qClose">Close</button>
+    </div>
+  </div>
+</div>
 
 <script>
 /* Baked-in copy of catalog.json so this file works standalone from the Files app.
@@ -642,6 +672,85 @@ $('printBtn').addEventListener('click', () => {
 });
 $('fab').addEventListener('click', () => $('ticket').classList.add('open'));
 $('closeT').addEventListener('click', () => $('ticket').classList.remove('open'));
+
+/* ---- Quote: text / email / share / PDF, without using up an invoice number ---- */
+function quoteNo(){ return 'Q-' + seq; }
+function buildQuote(){
+  const name = $('cName').value.trim(), bike = $('cBike').value.trim(), notes = $('cRider').value.trim();
+  const out = [];
+  out.push('A-RIDE SUSPENSION - QUOTE ' + quoteNo());
+  out.push(new Date().toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'}));
+  out.push('');
+  if(name) out.push('For: ' + name);
+  const bikes = [...new Set(lines.map(l => l.bike))];
+  if(bikes.length > 1) out.push('Bikes: ' + bikes.join(', '));
+  else if(bike || bikes[0]) out.push('Bike: ' + (bike || bikes[0]));
+  if(notes) out.push('Notes: ' + notes);
+  out.push('');
+  bikes.forEach(b => {
+    if(bikes.length > 1) out.push('-- ' + b + ' --');
+    lines.filter(l => l.bike === b).forEach(l => {
+      const unit = l.ovr === '' ? l.price : (parseFloat(l.ovr) || 0);
+      out.push('- ' + l.d + (l.pn !== 'CUSTOM' && l.pn.indexOf('AR-') !== 0 ? ' (' + l.pn + ')' : ''));
+      out.push('    ' + l.qty + ' x ' + money(unit) + ' = ' + money(lineTotal(l)));
+    });
+  });
+  out.push('');
+  out.push('Subtotal: ' + $('sub').textContent);
+  if($('discAmtRow').style.display !== 'none') out.push($('discLabel').textContent + ': ' + $('discAmt').textContent);
+  out.push('Tax on parts: ' + $('tax').textContent);
+  if((parseFloat($('ship').value) || 0) > 0) out.push('Shipping: ' + money(parseFloat($('ship').value)));
+  out.push('QUOTE TOTAL: ' + $('total').textContent);
+  out.push('');
+  out.push('This is a quote, not a bill. Reply to approve and we will get your parts ordered.');
+  out.push('A-Ride Suspension - aridesuspension@gmail.com');
+  return out.join('\n');
+}
+function contact(){
+  const c = $('cPhone').value.trim();
+  if(/@/.test(c)) return {email: c};
+  const d = c.replace(/[^0-9+]/g, '');
+  return d.length >= 7 ? {phone: d} : {};
+}
+$('quoteBtn').addEventListener('click', () => {
+  if(!lines.length){ toast('Add parts first'); return; }
+  $('qText').value = buildQuote();
+  const c = contact();
+  $('qTo').textContent = c.email ? 'Email goes to ' + c.email
+    : c.phone ? 'Text goes to ' + $('cPhone').value.trim()
+    : 'Tip: put a phone number or email in the customer box to fill it in automatically.';
+  $('qShare').style.display = navigator.share ? '' : 'none';
+  $('qsheet').classList.add('open');
+});
+$('qClose').addEventListener('click', () => $('qsheet').classList.remove('open'));
+$('qsheet').addEventListener('click', e => { if(e.target.id === 'qsheet') $('qsheet').classList.remove('open'); });
+$('qSms').addEventListener('click', () => {
+  const c = contact();
+  location.href = 'sms:' + (c.phone || '') + '&body=' + encodeURIComponent($('qText').value);
+});
+$('qMail').addEventListener('click', () => {
+  const c = contact();
+  const subj = 'Your A-Ride Suspension quote ' + quoteNo() + ($('cBike').value.trim() ? ' - ' + $('cBike').value.trim() : '');
+  location.href = 'mailto:' + (c.email || '') + '?subject=' + encodeURIComponent(subj) +
+    '&body=' + encodeURIComponent($('qText').value);
+});
+$('qShare').addEventListener('click', () => {
+  navigator.share({title: 'A-Ride Suspension quote ' + quoteNo(), text: $('qText').value}).catch(() => {});
+});
+$('qCopy').addEventListener('click', () => {
+  const t = $('qText').value;
+  (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(
+    () => toast('Quote copied'),
+    () => { $('qText').select(); document.execCommand('copy'); toast('Quote copied'); });
+});
+$('qPrint').addEventListener('click', () => {
+  $('qsheet').classList.remove('open');
+  const h = document.querySelector('.t-head h2'), g = document.querySelector('.grand span');
+  const old = [h.textContent, g.textContent, $('invNo').textContent];
+  h.textContent = 'Quote'; g.textContent = 'Quote total'; $('invNo').textContent = quoteNo();
+  window.print();
+  h.textContent = old[0]; g.textContent = old[1]; $('invNo').textContent = old[2];
+});
 
 let tT;
 function toast(msg){
