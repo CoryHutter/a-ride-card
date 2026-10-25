@@ -87,6 +87,17 @@ h1,h2{font-family:"Barlow Condensed",Impact,sans-serif;font-weight:600;letter-sp
 .cat{flex:0 0 auto;padding:7px 12px;border:1px solid var(--line);background:transparent;
   color:var(--muted);border-radius:20px;font-size:12.5px;cursor:pointer;white-space:nowrap;font-weight:500}
 .cat[aria-pressed="true"]{background:var(--gold);border-color:var(--gold);color:var(--navy);font-weight:600}
+.brands{display:flex;gap:6px;overflow-x:auto;padding:12px var(--pad) 0;scrollbar-width:none;align-items:center}
+.brands::-webkit-scrollbar{display:none}
+.brands .lbl{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-right:2px;flex:0 0 auto}
+.bsw{flex:0 0 auto;display:flex;align-items:center;gap:7px;padding:6px 11px 6px 8px;border:1px solid var(--gold);
+  background:transparent;color:var(--ink);border-radius:20px;font-size:12.5px;cursor:pointer;white-space:nowrap;font-weight:600}
+.bsw .sw{width:26px;height:15px;border-radius:9px;background:var(--gold);position:relative;flex:0 0 auto;transition:background .15s}
+.bsw .sw::after{content:"";position:absolute;top:2px;left:13px;width:11px;height:11px;border-radius:50%;background:var(--navy);transition:left .15s}
+.bsw .n{color:var(--muted);font-weight:500;font-size:11.5px}
+.bsw[aria-pressed="false"]{border-color:var(--line);color:var(--muted);font-weight:500}
+.bsw[aria-pressed="false"] .sw{background:var(--line)}
+.bsw[aria-pressed="false"] .sw::after{left:2px;background:var(--muted)}
 .scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px var(--pad) 120px}
 .sec-label{font-family:"Barlow Condensed",sans-serif;font-size:13px;font-weight:600;
   letter-spacing:.18em;text-transform:uppercase;color:var(--gold-dim);
@@ -245,6 +256,7 @@ h1,h2{font-family:"Barlow Condensed",Impact,sans-serif;font-weight:600;letter-sp
       <div class="hint">Type a few letters &mdash; <b>seal</b>, <b>gold</b>, <b>bush</b>, <b>oil</b>. Scanner input works here too.</div>
     </div>
 
+    <div class="brands" id="brands"></div>
     <div class="cats" id="cats"></div>
 
     <div class="scroll" id="scroll">
@@ -369,11 +381,39 @@ function fitFor(m){
   }
   return (hit || []).map(i => CAT.fitSkus[i]);
 }
+/* ---- Brand switches (saved on this device) ---- */
+const BRANDS = ['Race Tech', 'SKF', 'KYB', 'A-Ride'];
+function brandOf(pn, p){
+  if(pn.indexOf('AR-') === 0 || p.c === 'A-Ride Labor') return 'A-Ride';
+  if(pn.indexOf('115-') === 0) return 'SKF';
+  if(pn.indexOf('138-') === 0) return 'KYB';
+  return 'Race Tech';
+}
+let brandsOff = new Set();
+try{ brandsOff = new Set(JSON.parse(store.get('aride_brands_off') || '[]')); }catch(e){}
 function visibleParts(){
+  return allParts().filter(p => !brandsOff.has(p.b));
+}
+function renderBrands(){
+  const all = allParts(), count = {};
+  all.forEach(p => count[p.b] = (count[p.b] || 0) + 1);
+  $('brands').innerHTML = '<span class="lbl">Show</span>' + BRANDS.filter(b => count[b]).map(b =>
+    '<button class="bsw" data-b="' + b + '" aria-pressed="' + !brandsOff.has(b) + '">' +
+      '<span class="sw"></span>' + b + ' <span class="n">' + count[b] + '</span></button>').join('');
+}
+$('brands').addEventListener('click', e => {
+  const b = e.target.closest('.bsw'); if(!b) return;
+  const name = b.dataset.b;
+  brandsOff.has(name) ? brandsOff.delete(name) : brandsOff.add(name);
+  store.set('aride_brands_off', JSON.stringify([...brandsOff]));
+  renderBrands(); renderCats(); renderList();
+});
+function allParts(){
   const fitted = new Set(fitFor(model));
   const pns = [...new Set([...(model.parts || []), ...fitted, ...(CAT.universal || [])])];
   return pns.filter(pn => CAT.parts[pn] && !hiddenCats.has(CAT.parts[pn].c))
     .map(pn => Object.assign({pn}, CAT.parts[pn],
+       {b: brandOf(pn, CAT.parts[pn])},
        fitted.has(pn) ? {n: 'WPS fitment listed for this bike' + (CAT.parts[pn].n === 'WPS closeout' ? ' \u00b7 closeout' : '')} : {}))
     .sort((a,b) => catOrder(a.c) - catOrder(b.c) || a.d.localeCompare(b.d));
 }
@@ -426,12 +466,14 @@ function selectBike(id){
     (model.fork  ? '<div class="spec">Fork <b>'  + model.fork  + '</b></div>' : '') +
     (model.shock ? '<div class="spec">Shock <b>' + model.shock + '</b></div>' : '') +
     (model.stub  ? '<div class="spec">SKF / KYB fitment only <b>Race Tech parts not loaded yet</b></div>' : '');
+  renderBrands(); renderCats(); renderList();
+  if(lines.length) toast('Switched to ' + model.label + ' \u2014 ticket kept');
+}
+function renderCats(){
   const cats = ['All', ...new Set(visibleParts().map(p => p.c))];
   if(!cats.includes(activeCat)) activeCat = 'All';
   $('cats').innerHTML = cats.map(c =>
     '<button class="cat" data-c="' + c + '" aria-pressed="' + (c === activeCat) + '">' + c + '</button>').join('');
-  renderList();
-  if(lines.length) toast('Switched to ' + model.label + ' \u2014 ticket kept');
 }
 $('cats').addEventListener('click', e => {
   const b = e.target.closest('.cat'); if(!b) return;
@@ -451,6 +493,11 @@ function renderList(){
   const rows = visibleParts().filter(p => (activeCat === 'All' || p.c === activeCat) && matches(p, q));
   $('partsLabel').textContent = q ? 'Matches (' + rows.length + ')'
     : (activeCat === 'All' ? 'All parts \u2014 ' + model.label : activeCat);
+  if(!rows.length && !q){
+    $('list').innerHTML = '<div class="empty"><b>No parts showing</b>' +
+      'Every brand for this bike is switched off. Tap a brand above to turn it back on.</div>';
+    return;
+  }
   if(!rows.length){
     $('list').innerHTML = '<div class="empty"><b>No match for &ldquo;' + q + '&rdquo;</b>' +
       'Try a shorter word, or clear the category filter.</div>';
