@@ -231,8 +231,27 @@ h1,h2{font-family:"Barlow Condensed",Impact,sans-serif;font-weight:600;letter-sp
   .line .ovr{display:none}
   #laborRow{display:flex !important}
   .print-only{display:block !important}
+  .shop,.line .cost,#csheet{display:none !important}
 }
 .print-only{display:none}
+/* ---- Shop-only cost & margin (never printed, never in quotes) ---- */
+.shop{margin-top:11px;padding:9px 11px 8px;border:1px dashed var(--gold-dim);border-radius:6px}
+.shop .sh{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:3px;
+  font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-dim);font-weight:600}
+.shop .sh button{background:transparent;border:1px solid var(--gold);color:var(--gold);border-radius:4px;
+  padding:6px 11px;font-size:11.5px;cursor:pointer;letter-spacing:.08em;text-transform:uppercase;font-weight:600}
+.shop .miss{font-size:11.5px;color:var(--gold);margin-top:3px}
+.neg{color:var(--red) !important}
+.line .cost{grid-column:1 / -1;display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--muted)}
+.line .cost input{background:var(--navy);border:1px dashed var(--gold-dim);border-radius:3px;color:var(--ink);
+  padding:5px 7px;width:92px;font-family:"IBM Plex Mono",monospace;font-size:12.5px}
+.line .cost .mg{margin-left:auto;font-family:"IBM Plex Mono",monospace;color:var(--ink)}
+.line .cost .mg.none{color:var(--muted);font-family:inherit}
+.cgrid{display:grid;grid-template-columns:1fr auto;gap:9px 12px;align-items:center;font-size:14px}
+.cgrid span{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12.5px}
+.cgrid input{background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--ink);
+  padding:8px;width:76px;text-align:right;font-family:"IBM Plex Mono",monospace;font-size:14px}
+.csub{font-size:12.5px;color:var(--muted);line-height:1.45}
 </style>
 </head>
 <body>
@@ -307,9 +326,18 @@ h1,h2{font-family:"Barlow Condensed",Impact,sans-serif;font-weight:600;letter-sp
       <div class="trow"><span>Tax on parts</span><b id="tax">$0.00</b></div>
       <div class="trow"><span>Shipping</span><span>$ <input id="ship" type="number" step="0.01" min="0" value="0"></span></div>
       <div class="grand"><span>Total due</span><b id="total">$0.00</b></div>
+      <div class="shop" id="shopBox">
+        <div class="sh"><span>Shop only &middot; never printed</span><button id="costsBtn">My costs</button></div>
+        <div class="trow"><span>Your cost</span><b id="cTot">$0.00</b></div>
+        <div class="trow"><span>Profit</span><b id="pTot">$0.00</b></div>
+        <div class="trow"><span>Margin, whole job</span><b id="mTot">&mdash;</b></div>
+        <div class="trow"><span>Margin, parts only</span><b id="pmTot">&mdash;</b></div>
+        <div class="miss" id="cMiss"></div>
+      </div>
       <div class="acts">
         <button id="addCustom">+ Custom line</button>
         <button id="exportCsv">Export CSV</button>
+        <button id="qbCsv">QuickBooks</button>
         <button id="clearAll">Clear</button>
         <button class="quote" id="quoteBtn">Quote</button>
         <button class="primary" id="printBtn">Print / PDF</button>
@@ -322,6 +350,18 @@ h1,h2{font-family:"Barlow Condensed",Impact,sans-serif;font-weight:600;letter-sp
 </div>
 <button class="fab" id="fab"><span id="fabCount">Ticket &mdash; 0 lines</span><span id="fabTotal">$0.00</span></button>
 <div class="toast" id="toast"></div>
+<div class="qsheet" id="csheet">
+  <div class="qpanel">
+    <h3>My costs</h3>
+    <div class="csub">What you pay, as a percent off MSRP, for each brand. Every part from that brand gets its cost from this. To set one part's real cost, type it on that line in the ticket. A-Ride labor counts as no parts cost. Saved on this device only.</div>
+    <div class="cgrid" id="cBrands"></div>
+    <div class="csub" id="cOvrN"></div>
+    <div class="qbtns">
+      <button id="cClearOvr">Clear part costs</button>
+      <button class="primary" id="cDone">Done</button>
+    </div>
+  </div>
+</div>
 <div class="qsheet" id="qsheet">
   <div class="qpanel">
     <h3>Send quote</h3>
@@ -565,11 +605,67 @@ function addPart(pn){
   const ex = lines.find(l => l.pn === pn && l.bike === model.label);
   if(ex) ex.qty++;
   else lines.push({ pn:pn, d:p.d, price:p.p, qty:1, ovr:'',
-                    tax:p.tax !== false, bike:model.label, fresh:true });
+                    tax:p.tax !== false, bike:model.label, b:brandOf(pn, p), fresh:true });
   toast((p.d.length > 34 ? pn : p.d) + ' added');
   render();
 }
 const lineTotal = l => (l.ovr === '' ? l.price : parseFloat(l.ovr) || 0) * l.qty;
+const unitSell = l => (l.ovr === '' ? l.price : parseFloat(l.ovr) || 0);
+
+/* ---- My costs: brand % off MSRP + per-part cost (this device only; never printed) ---- */
+const COST_BRANDS = ['Race Tech', 'SKF', 'KYB'];
+let brandPct = {}, partCost = {};
+try{ brandPct = JSON.parse(store.get('aride_cost_brand') || '{}'); }catch(e){}
+try{ partCost = JSON.parse(store.get('aride_cost_part') || '{}'); }catch(e){}
+function saveCosts(){
+  store.set('aride_cost_brand', JSON.stringify(brandPct));
+  store.set('aride_cost_part', JSON.stringify(partCost));
+}
+// Cost of ONE unit, or null when we don't know it yet.
+function brandCost(l){
+  if(l.b === 'A-Ride') return 0;
+  const pct = brandPct[l.b];
+  return (pct == null || isNaN(pct)) ? null : l.price * (1 - pct / 100);
+}
+function unitCost(l){
+  if(l.pn === 'CUSTOM') return (l.cost === '' || l.cost == null) ? (l.tax ? null : 0) : (parseFloat(l.cost) || 0);
+  if(partCost[l.pn] != null) return partCost[l.pn];
+  return brandCost(l);
+}
+const pctTxt = n => isFinite(n) ? (Math.round(n * 10) / 10).toFixed(1) + '%' : '—';
+function lineMgText(l){
+  const u = unitCost(l), s = unitSell(l);
+  if(u == null) return {t: 'no cost set', cls: 'mg none'};
+  if(!s) return {t: 'profit ' + money(-u * l.qty), cls: 'mg neg'};
+  const m = (s - u) / s * 100;
+  return {t: 'margin ' + pctTxt(m), cls: 'mg' + (m < 0 ? ' neg' : '')};
+}
+function updLineMg(i){
+  const el = document.getElementById('mg' + i); if(!el || !lines[i]) return;
+  const r = lineMgText(lines[i]); el.textContent = r.t; el.className = r.cls;
+}
+function renderCostSheet(){
+  $('cBrands').innerHTML = COST_BRANDS.map(b =>
+    '<label for="cb_' + b.replace(/\W/g,'') + '">' + b + '</label>' +
+    '<span><input id="cb_' + b.replace(/\W/g,'') + '" type="number" inputmode="decimal" step="0.1" min="0" max="100" data-b="' + b + '"' +
+      ' value="' + (brandPct[b] != null ? brandPct[b] : '') + '" placeholder="?"> % off MSRP</span>').join('');
+  const n = Object.keys(partCost).length;
+  $('cOvrN').textContent = n ? n + (n === 1 ? ' part has' : ' parts have') + ' its own cost set.' : 'No single-part costs set yet.';
+  $('cClearOvr').style.display = n ? '' : 'none';
+}
+$('costsBtn').addEventListener('click', () => { renderCostSheet(); $('csheet').classList.add('open'); });
+$('cDone').addEventListener('click', () => $('csheet').classList.remove('open'));
+$('csheet').addEventListener('click', e => { if(e.target.id === 'csheet') $('csheet').classList.remove('open'); });
+$('cBrands').addEventListener('input', e => {
+  const b = e.target.dataset.b; if(!b) return;
+  const v = e.target.value.trim();
+  if(v === '') delete brandPct[b]; else brandPct[b] = Math.min(100, Math.max(0, parseFloat(v) || 0));
+  saveCosts(); render();
+});
+$('cClearOvr').addEventListener('click', () => {
+  if(!confirm('Remove the cost you typed for every single part? Brand percentages stay.')) return;
+  partCost = {}; saveCosts(); renderCostSheet(); render();
+});
 
 function totals(){
   const sub = lines.reduce((s,l) => s + lineTotal(l), 0);
@@ -592,6 +688,28 @@ function totals(){
   $('total').textContent = money(grand);
   $('fabCount').textContent = 'Ticket \u2014 ' + lines.length + (lines.length === 1 ? ' line' : ' lines');
   $('fabTotal').textContent = money(grand);
+
+  // Shop-only: cost, profit, margin. Revenue is after the parts discount, before tax and shipping.
+  // Lines with no known cost are left out so they don't fake a high margin.
+  let rev = 0, cost = 0, pRev = 0, pCost = 0, missing = 0;
+  lines.forEach(l => {
+    const u = unitCost(l);
+    if(u == null){ missing++; return; }
+    const r = lineTotal(l) * (l.tax ? 1 - pct / 100 : 1);
+    rev += r; cost += u * l.qty;
+    if(l.tax){ pRev += r; pCost += u * l.qty; }
+  });
+  const profit = rev - cost;
+  $('cTot').textContent = money(cost);
+  $('pTot').textContent = money(profit);
+  $('pTot').className = profit < 0 ? 'neg' : '';
+  $('mTot').textContent = rev ? pctTxt(profit / rev * 100) : '—';
+  $('mTot').className = profit < 0 ? 'neg' : '';
+  $('pmTot').textContent = pRev ? pctTxt((pRev - pCost) / pRev * 100) : '—';
+  $('pmTot').className = (pRev - pCost) < 0 ? 'neg' : '';
+  $('cMiss').textContent = missing
+    ? missing + (missing === 1 ? ' line has' : ' lines have') + ' no cost yet and ' + (missing === 1 ? 'is' : 'are') + ' left out. Tap My costs, or type a cost on the line.'
+    : '';
 }
 function render(){
   const multi = new Set(lines.map(l => l.bike)).size > 1;
@@ -622,6 +740,17 @@ function render(){
           '<button class="taxtog ' + (l.tax ? 'on' : '') + '" data-a="tax" data-i="' + i + '">' +
             (l.tax ? 'Taxed' : 'No tax') + '</button>' +
         '</div>' +
+        (function(){
+          const own = l.pn === 'CUSTOM' ? (l.cost == null ? '' : l.cost) : (partCost[l.pn] != null ? partCost[l.pn] : '');
+          const bc = l.pn === 'CUSTOM' ? null : brandCost(l);
+          const mg = lineMgText(l);
+          return '<div class="cost">' +
+            '<span>Your cost</span>' +
+            '<input type="number" step="0.01" inputmode="decimal" aria-label="Your cost each" data-a="cost" data-i="' + i + '"' +
+              ' placeholder="' + (bc != null ? bc.toFixed(2) : 'each') + '" value="' + own + '">' +
+            '<span id="mg' + i + '" class="' + mg.cls + '">' + mg.t + '</span>' +
+          '</div>';
+        })() +
       '</div>').join('');
     lines.forEach(l => l.fresh = false);
   }
@@ -637,8 +766,16 @@ $('lines').addEventListener('click', e => {
   render();
 });
 $('lines').addEventListener('input', e => {
+  const c = e.target.closest('[data-a="cost"]');
+  if(c){
+    const i = +c.dataset.i, l = lines[i], v = c.value.trim();
+    if(l.pn === 'CUSTOM') l.cost = v;
+    else if(v === '') delete partCost[l.pn];
+    else partCost[l.pn] = parseFloat(v) || 0;
+    saveCosts(); updLineMg(i); totals(); return;
+  }
   const b = e.target.closest('[data-a="ovr"]'); if(!b) return;
-  lines[+b.dataset.i].ovr = b.value; totals();
+  lines[+b.dataset.i].ovr = b.value; updLineMg(+b.dataset.i); totals();
 });
 ['taxRate','ship'].forEach(id => $(id).addEventListener('input', totals));
 $('discPct').addEventListener('change', totals);
@@ -649,7 +786,9 @@ $('addCustom').addEventListener('click', () => {
   const d = prompt('Description (labor, freight, shop supplies\u2026)'); if(!d) return;
   const p = parseFloat(prompt('Amount', '0')); if(isNaN(p)) return;
   const taxed = confirm('Charge sales tax on this line?\n\nOK = taxable   \u00b7   Cancel = labor / no tax');
-  lines.push({ pn:'CUSTOM', d:d, price:p, qty:1, ovr:'', tax:taxed, bike:model.label, fresh:true });
+  const cRaw = prompt('Your cost for this line (shop only, never printed).\nLeave blank if you don\'t know it' + (taxed ? '.' : ', or it\'s labor.'), '');
+  const cst = cRaw == null ? '' : String(cRaw).replace(/[^0-9.]/g, '');
+  lines.push({ pn:'CUSTOM', d:d, price:p, qty:1, ovr:'', tax:taxed, bike:model.label, b:'Custom', cost:cst, fresh:true });
   render();
 });
 $('clearAll').addEventListener('click', () => {
@@ -666,6 +805,39 @@ $('exportCsv').addEventListener('click', () => {
   const a = document.createElement('a');
   a.href = url; a.download = 'INV-' + seq + '.csv'; a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1500);
+});
+/* ---- QuickBooks Online invoice import file ----
+   One row per line. Uses four simple Products/Services: Parts (taxable), Labor (not taxed),
+   Shipping and Discount. Part number + description go in the description column.
+   QuickBooks adds sales tax from its own tax settings, so tax is not a row here. */
+$('qbCsv').addEventListener('click', () => {
+  if(!lines.length){ toast('Add parts first'); return; }
+  const esc = v => '"' + String(v).replace(/"/g,'""') + '"';
+  const d = new Date();
+  const date = String(d.getMonth()+1).padStart(2,'0') + '/' + String(d.getDate()).padStart(2,'0') + '/' + d.getFullYear();
+  const inv = 'INV-' + seq;
+  const cust = $('cName').value.trim() || 'Walk-in customer';
+  const multi = new Set(lines.map(l => l.bike)).size > 1;
+  const memo = [$('cBike').value.trim(), $('cRider').value.trim(), $('cWO').value.trim() && ('WO ' + $('cWO').value.trim())].filter(Boolean).join(' | ');
+  const head = ['InvoiceNo','Customer','InvoiceDate','DueDate','Memo','Item(Product/Service)','ItemDescription','ItemQuantity','ItemRate','ItemAmount','Taxable'];
+  const rows = [head];
+  const add = (item, desc, qty, rate, amt, taxable) =>
+    rows.push([inv, cust, date, date, rows.length === 1 ? memo : '', item, desc, qty, rate.toFixed(2), amt.toFixed(2), taxable ? 'Y' : 'N']);
+  lines.forEach(l => {
+    const desc = (l.pn !== 'CUSTOM' ? l.pn + ' ' : '') + l.d + (multi ? ' (' + l.bike + ')' : '');
+    add(l.tax ? 'Parts' : 'Labor', desc, l.qty, unitSell(l), lineTotal(l), l.tax);
+  });
+  const pct = parseFloat($('discPct').value) || 0;
+  const partsSub = lines.reduce((s,l) => s + (l.tax ? lineTotal(l) : 0), 0);
+  if(pct > 0 && partsSub > 0){ const amt = -partsSub * pct / 100; add('Discount', pct + '% off parts', 1, amt, amt, true); }
+  const ship = parseFloat($('ship').value) || 0;
+  if(ship > 0) add('Shipping', 'Shipping', 1, ship, ship, false);
+  const csv = '﻿' + rows.map(r => r.map(esc).join(',')).join('\r\n');
+  const url = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8'}));
+  const a = document.createElement('a');
+  a.href = url; a.download = inv + '-QuickBooks.csv'; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+  toast('QuickBooks file saved');
 });
 $('printBtn').addEventListener('click', () => {
   window.print(); seq++; store.set('aride_seq', String(seq)); stampInv();
