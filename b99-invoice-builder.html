@@ -581,7 +581,9 @@ $('exportCsv').addEventListener('click', () => {
   setTimeout(() => URL.revokeObjectURL(url), 1500);
 });
 $('printBtn').addEventListener('click', () => {
-  window.print(); seq++; store.set('b99_seq', String(seq)); stampInv();
+  const bump = () => { seq++; store.set('b99_seq', String(seq)); stampInv(); };
+  if(IS_IOS){ sendPdf('invoice').then(ok => { if(ok) bump(); }); return; }
+  window.print(); bump();
 });
 $('fab').addEventListener('click', () => $('ticket').classList.add('open'));
 $('closeT').addEventListener('click', () => $('ticket').classList.remove('open'));
@@ -593,6 +595,189 @@ function toast(msg){
   clearTimeout(tT);
   tT = setTimeout(() => $('toast').classList.remove('show'), 1400);
 }
+/* ---- PDF built right here on the page. iPad and iPhone ignore the print command when this page
+   is opened from a home-screen icon, the Files app or another app's browser, so on those devices
+   the button makes the PDF itself and opens the share sheet (Print, Save to Files, Mail, Messages). ---- */
+const IS_IOS = /iP(hone|ad|od)/.test(navigator.userAgent) ||
+  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const PDF_W = {
+  r:[278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,334,260,334,584],
+  b:[278,333,474,556,556,889,722,238,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,333,333,584,584,584,611,975,722,722,722,722,667,611,778,722,278,556,722,611,833,722,778,667,778,722,667,611,722,667,944,667,667,611,333,278,333,584,556,333,556,611,556,611,556,333,611,611,278,278,556,278,889,611,611,611,611,389,556,333,611,556,778,556,556,500,389,280,389,584]
+};
+function pdfTxt(s){
+  return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[–—−]/g, '-').replace(/[‘’]/g, "'").replace(/[“”]/g, '"')
+    .replace(/×/g, 'x').replace(/[·•]/g, '-').replace(/…/g, '...')
+    .replace(/°/g, ' deg').replace(/\s+/g, ' ').replace(/[^\x20-\x7e]/g, '');
+}
+function pdfWidth(s, bold, size){
+  const w = bold ? PDF_W.b : PDF_W.r; let t = 0;
+  for(const ch of s) t += w[ch.charCodeAt(0) - 32] || 556;
+  return t / 1000 * size;
+}
+function pdfWrap(s, maxW, bold, size){
+  const out = []; let cur = '';
+  pdfTxt(s).split(' ').forEach(word => {
+    while(pdfWidth(word, bold, size) > maxW && word.length > 1){
+      let k = word.length; while(k > 1 && pdfWidth(word.slice(0, k), bold, size) > maxW) k--;
+      if(cur){ out.push(cur); cur = ''; }
+      out.push(word.slice(0, k)); word = word.slice(k);
+    }
+    const t = cur ? cur + ' ' + word : word;
+    if(pdfWidth(t, bold, size) <= maxW) cur = t; else { if(cur) out.push(cur); cur = word; }
+  });
+  if(cur) out.push(cur);
+  return out.length ? out : [''];
+}
+function buildPdf(d){
+  const W = 612, H = 792, M = 40, R = W - M, pages = [];
+  let ops = [], y = 0;
+  const esc = s => s.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+  const text = (x, yy, s, size, bold, align, gray) => {
+    s = pdfTxt(s); const xx = align === 'r' ? x - pdfWidth(s, bold, size) : x;
+    ops.push((gray ? '0.4 g' : '0 g') + ' BT /' + (bold ? 'F2' : 'F1') + ' ' + size + ' Tf ' +
+      xx.toFixed(2) + ' ' + yy.toFixed(2) + ' Td (' + esc(s) + ') Tj ET');
+  };
+  const rule = (x1, yy, x2, wid, gray) =>
+    ops.push(gray + ' G ' + wid + ' w ' + x1.toFixed(2) + ' ' + yy.toFixed(2) + ' m ' + x2.toFixed(2) + ' ' + yy.toFixed(2) + ' l S');
+  const C = {pn: M, d: M + 92, q: 432, u: 500, a: R};
+  const tableHead = () => {
+    text(C.pn, y, 'PART #', 8, true, '', true); text(C.d, y, 'DESCRIPTION', 8, true, '', true);
+    text(C.q, y, 'QTY', 8, true, 'r', true); text(C.u, y, 'UNIT', 8, true, 'r', true); text(C.a, y, 'AMOUNT', 8, true, 'r', true);
+    y -= 7; rule(M, y, R, 0.8, 0.3); y -= 14;
+  };
+  const newPage = () => {
+    if(ops.length) pages.push(ops);
+    ops = []; y = H - M;
+    if(pages.length){ text(M, y, d.brand + ' - ' + d.title + ' ' + d.no + ' (continued)', 9, true); y -= 24; tableHead(); }
+  };
+  const room = need => { if(y - need < M + 30){ newPage(); } };
+
+  newPage();
+  text(M, y - 4, d.brand, 18, true);
+  text(R, y - 4, d.title, 18, true, 'r');
+  y -= 22;
+  text(R, y, d.no + '   ' + d.date, 10, false, 'r', true);
+  y -= 10; rule(M, y, R, 1.5, 0); y -= 22;
+
+  const half = (R - M) / 2;
+  d.cust.forEach((c, i) => {
+    const x = M + (i % 2) * half, yy = y - Math.floor(i / 2) * 26;
+    text(x, yy, c[0].toUpperCase(), 7.5, true, '', true);
+    text(x, yy - 11, pdfWrap(c[1], half - 12, false, 10)[0], 10);
+  });
+  if(d.cust.length) y -= Math.ceil(d.cust.length / 2) * 26 + 12;
+
+  tableHead();
+  let lastBike = null;
+  d.rows.forEach(r => {
+    if(r.bike && r.bike !== lastBike){
+      room(30); text(M, y, r.bike, 9, true); y -= 14; lastBike = r.bike;
+    }
+    const dl = pdfWrap(r.d, C.q - 30 - C.d, false, 9.5);
+    const pl = pdfWrap(r.pn, C.d - C.pn - 8, false, 8.5);
+    const n = Math.max(dl.length, pl.length);
+    room(n * 12 + 8);
+    pl.forEach((t, i) => text(C.pn, y - i * 12, t, 8.5, false, '', true));
+    dl.forEach((t, i) => text(C.d, y - i * 12, t, 9.5));
+    text(C.q, y, String(r.qty), 9.5, false, 'r');
+    text(C.u, y, r.unit, 9.5, false, 'r');
+    text(C.a, y, r.amt, 9.5, true, 'r');
+    y -= n * 12 + 2; rule(M, y + 4, R, 0.4, 0.8); y -= 10;
+  });
+
+  room(d.tots.length * 15 + 60);
+  y -= 6;
+  const lx = 470;
+  d.tots.forEach(t => { text(lx, y, t[0], 9.5, false, 'r', true); text(R, y, t[1], 9.5, false, 'r'); y -= 15; });
+  y -= 2; rule(330, y + 9, R, 1.5, 0); y -= 10;
+  text(lx, y, d.grand[0], 12, true, 'r'); text(R, y, d.grand[1], 14, true, 'r');
+  y -= 30;
+  d.foot.forEach(f => pdfWrap(f, R - M, false, 8.5).forEach(t => { room(14); text(M, y, t, 8.5, false, '', true); y -= 12; }));
+  pages.push(ops);
+
+  const total = pages.length;
+  if(total > 1) pages.forEach((p, i) => {
+    const s = 'Page ' + (i + 1) + ' of ' + total;
+    p.push('0.4 g BT /F1 8 Tf ' + (R - pdfWidth(s, false, 8)).toFixed(2) + ' ' + (M - 16) + ' Td (' + s + ') Tj ET');
+  });
+
+  const objs = [];
+  objs[1] = '<< /Type /Catalog /Pages 2 0 R >>';
+  objs[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';
+  objs[4] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>';
+  const kids = [];
+  pages.forEach((p, i) => {
+    const po = 5 + i * 2, co = po + 1, stream = p.join('\n');
+    kids.push(po + ' 0 R');
+    objs[po] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + W + ' ' + H + '] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ' + co + ' 0 R >>';
+    objs[co] = '<< /Length ' + stream.length + ' >>\nstream\n' + stream + '\nendstream';
+  });
+  objs[2] = '<< /Type /Pages /Kids [' + kids.join(' ') + '] /Count ' + pages.length + ' >>';
+  let out = '%PDF-1.4\n', offs = [];
+  for(let i = 1; i < objs.length; i++){ offs[i] = out.length; out += i + ' 0 obj\n' + objs[i] + '\nendobj\n'; }
+  const xref = out.length;
+  out += 'xref\n0 ' + objs.length + '\n0000000000 65535 f \n';
+  for(let i = 1; i < objs.length; i++) out += String(offs[i]).padStart(10, '0') + ' 00000 n \n';
+  out += 'trailer\n<< /Size ' + objs.length + ' /Root 1 0 R >>\nstartxref\n' + xref + '\n%%EOF';
+  return out;
+}
+function pdfData(kind){
+  totals();
+  const isQ = kind === 'quote';
+  const v = id => ($(id) && $(id).value.trim()) || '';
+  const shown = id => $(id) && $(id).style.display !== 'none';
+  const multi = new Set(lines.map(l => l.bike)).size > 1;
+  const rows = lines.map(l => {
+    const unit = (l.ovr === '' || l.ovr == null) ? l.price : (parseFloat(l.ovr) || 0);
+    return {bike: multi ? l.bike : '', pn: l.pn === 'CUSTOM' ? '' : l.pn, d: l.d, qty: l.qty,
+            unit: money(unit), amt: money(lineTotal(l))};
+  });
+  const cust = [['Customer', v('cName')], ['Phone / email', v('cPhone')],
+    ['Bike', v('cBike') || (!multi && lines[0] ? lines[0].bike : '')], ['Job notes', v('cRider')], ['Work order ref', v('cWO')]]
+    .filter(c => c[1]);
+  const tots = [['Subtotal', $('sub').textContent]];
+  if(shown('laborRow')) tots.push(['Of which labor (not taxed)', $('labor').textContent]);
+  if(shown('discAmtRow')) tots.push([$('discLabel').textContent, $('discAmt').textContent]);
+  tots.push(['Tax on parts (' + (parseFloat($('taxRate').value) || 0) + '%)', $('tax').textContent]);
+  if((parseFloat($('ship').value) || 0) > 0) tots.push(['Shipping', money(parseFloat($('ship').value))]);
+  const footEl = document.querySelector('.ticket .print-only');
+  const foot = [];
+  if(isQ) foot.push('This is a quote, not a bill. Reply to approve and we will get your parts ordered.');
+  if(footEl) foot.push(footEl.textContent);
+  const h2 = document.querySelector('.t-head h2');
+  return {
+    brand: (document.title.split(/\s[—-]\s/)[0] || 'Invoice').toUpperCase(),
+    title: isQ ? 'QUOTE' : (h2 ? h2.textContent : 'Invoice').toUpperCase(),
+    no: isQ ? quoteNo() : 'INV-' + seq,
+    date: new Date().toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'}),
+    cust, rows, tots,
+    grand: [isQ ? 'Quote total' : 'Total due', $('total').textContent],
+    foot
+  };
+}
+function savePdf(file){
+  const url = URL.createObjectURL(file);
+  const a = document.createElement('a');
+  a.href = url; a.download = file.name; a.target = '_blank'; a.rel = 'noopener';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  toast('PDF ready');
+  return true;
+}
+/* Resolves true once the PDF was handed off, false if there was nothing to send or it was cancelled. */
+function sendPdf(kind){
+  if(!lines.length){ toast('Add parts first'); return Promise.resolve(false); }
+  const d = pdfData(kind);
+  const who = pdfTxt(v_name()).replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const file = new File([buildPdf(d)], d.no + (who ? '-' + who : '') + '.pdf', {type: 'application/pdf'});
+  if(navigator.canShare && navigator.canShare({files: [file]})){
+    return navigator.share({files: [file]}).then(() => true,
+      e => (e && e.name === 'AbortError') ? false : savePdf(file));
+  }
+  return Promise.resolve(savePdf(file));
+}
+function v_name(){ return ($('cName') && $('cName').value.trim()) || ''; }
 </script>
 </body>
 </html>
