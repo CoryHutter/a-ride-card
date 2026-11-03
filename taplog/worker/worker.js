@@ -121,7 +121,7 @@ export default {
         const po = String(b.po || '').trim();
         if (!/^[A-Za-z0-9 _.\-]{3,20}$/.test(po)) return json({ error: 'PO number must be 3 to 20 letters, numbers or dashes' }, 400, cors);
         const items = (Array.isArray(b.items) ? b.items : [])
-          .map(i => ({ sku: String(i.sku || '').trim(), qty: parseInt(i.qty, 10) }))
+          .map(i => ({ sku: String(i.sku || '').trim(), qty: parseInt(i.qty, 10), d: String(i.d || '').slice(0, 120), cost: parseFloat(i.cost) || null }))
           .filter(i => i.sku && i.qty > 0 && i.qty < 100).slice(0, 60);
         if (!items.length) return json({ error: 'No WPS parts to put in the cart' }, 400, cors);
 
@@ -138,13 +138,34 @@ export default {
             ? { sku: it.sku, qty: it.qty, ok: true, available: d.available_quantity, backorder: d.backorder_quantity, price: d.dealer_price }
             : { sku: it.sku, qty: it.qty, ok: false, error: wpsMsg(r.body) });
         }
-        const cart = { po, cartNo, at: new Date().toISOString(), lines };
+        const cart = { po, cartNo, at: new Date().toISOString(), lines, stock: !!b.stock };
+
+        // Special-order log: every part ordered for a customer job (not stock orders).
+        // Keyed by PO + part so sending the same cart again doesn't double count.
+        if (!b.stock) {
+          const log = (await env.TICKETS.get('solog', 'json')) || {};
+          lines.filter(l => l.ok).forEach(l => {
+            const src = items.find(i => i.sku === l.sku) || {};
+            log[po + '|' + l.sku] = { sku: l.sku, d: src.d || '', qty: l.qty, cost: l.price != null ? l.price : src.cost,
+              po, ticket: b.ticketNo || po, bike: String(b.bike || '').slice(0, 80), at: cart.at };
+          });
+          const keys = Object.keys(log);
+          if (keys.length > 3000) keys.sort((a, c) => log[a].at < log[c].at ? -1 : 1).slice(0, keys.length - 3000).forEach(k => delete log[k]);
+          await env.TICKETS.put('solog', JSON.stringify(log));
+        }
 
         if (b.ticketId && /^[A-Za-z0-9]{6,24}$/.test(b.ticketId)) {
           const t = await env.TICKETS.get('t:' + b.ticketId, 'json');
           if (t) { t.wpsCart = cart; await env.TICKETS.put('t:' + t.id, JSON.stringify(t)); }
         }
         return json(cart, 200, cors);
+      }
+      // Parts the shop keeps special-ordering for jobs, most-ordered first
+      if (req.method === 'GET' && p === '/api/special-orders') {
+        const days = Math.min(730, Math.max(7, parseInt(url.searchParams.get('days'), 10) || 365));
+        const since = new Date(Date.now() - days * 86400000).toISOString();
+        const log = (await env.TICKETS.get('solog', 'json')) || {};
+        return json({ days, entries: Object.values(log).filter(e => e.at >= since) }, 200, cors);
       }
       if (req.method === 'POST' && (m = p.match(/^\/api\/wps-cart\/([A-Za-z0-9 _.\-]{3,20})\/delete$/))) {
         const r = await wpsSend(env, 'DELETE', '/carts/' + encodeURIComponent(decodeURIComponent(m[1])));

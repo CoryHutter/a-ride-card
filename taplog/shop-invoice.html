@@ -151,6 +151,19 @@ button{font:inherit}
 .po input{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--ink);padding:9px;font-family:"IBM Plex Mono",monospace;font-size:14px}
 .ostat{font-size:13px;line-height:1.5;border:1px solid var(--line);border-radius:6px;padding:10px}
 .ostat a{color:var(--acc)}
+.sohead{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.sohead select{background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--ink);padding:7px;font-size:13px}
+.sorow{display:grid;grid-template-columns:auto 1fr auto;gap:3px 10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.sorow input[type=checkbox]{width:20px;height:20px;accent-color:var(--acc)}
+.sorow .sod{font-size:13px;line-height:1.3;min-width:0;overflow-wrap:anywhere}
+.sorow .sod b{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--acc);font-weight:600}
+.sorow .sod small{display:block;color:var(--muted);font-size:11.5px;margin-top:2px}
+.sorow .cnt{font-family:"Barlow Condensed",sans-serif;font-size:26px;font-weight:700;line-height:1;text-align:right}
+.sorow .cnt small{display:block;font-family:Inter,sans-serif;font-size:10px;font-weight:500;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.sorow .keep{grid-column:2 / -1;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.sorow .keep input{width:56px;background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--ink);padding:5px;text-align:center;font-family:"IBM Plex Mono",monospace}
+.sosum{font-size:13px;line-height:1.5;border:1px solid var(--acc-dim);border-radius:6px;padding:10px}
+.sosum b{color:var(--ink)}
 
 .sheet{position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.62);display:none;align-items:center;justify-content:center;padding:14px}
 .sheet.open{display:flex}
@@ -278,6 +291,7 @@ button{font:inherit}
       <div class="acts">
         <button class="ready" id="readyBtn">Bike ready &mdash; text customer</button>
         <button class="order" id="orderBtn">Order parts from WPS</button>
+        <button class="order" id="soBtn">Parts we keep special-ordering</button>
         <button id="addCustom">+ Custom line</button>
         <button id="quoteBtn">Quote</button>
         <button class="primary" id="printBtn">Print / PDF</button>
@@ -321,6 +335,25 @@ button{font:inherit}
       <a class="full" id="ordSite" href="https://www.wpsorders.com" target="_blank" rel="noopener"
          style="display:none;text-align:center;padding:12px 8px;border-radius:4px;font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:14px;letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--acc);color:var(--acc);text-decoration:none">Open wpsorders.com to submit</a>
       <button id="ordClose">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Parts we keep special-ordering -->
+<div class="sheet" id="soSheet">
+  <div class="panel">
+    <h3>Parts we keep special-ordering</h3>
+    <div class="sub">Every part sent to a WPS cart for a customer job is counted here. Parts ordered for jobs again and again are
+      the ones worth keeping on the shelf, so the next bike isn&rsquo;t waiting on parts.</div>
+    <div class="sohead"><span>Looking back</span>
+      <select id="soDays"><option value="90">3 months</option><option value="180">6 months</option><option value="365" selected>12 months</option></select>
+      <span id="soCount"></span></div>
+    <div id="soSum"></div>
+    <div id="soList"></div>
+    <div class="btns">
+      <button class="primary full" id="soStock">Put ticked parts in a WPS stock cart</button>
+      <button id="soCsv">Save as spreadsheet</button>
+      <button id="soClose">Close</button>
     </div>
   </div>
 </div>
@@ -925,7 +958,7 @@ $('ordSend').addEventListener('click', async () => {
   $('ordList').querySelectorAll('input[type=checkbox]').forEach(cb => {
     if(!cb.checked) return;
     const i = +cb.dataset.i, q = parseInt($('ordList').querySelector('[data-q="' + i + '"]').value, 10) || 0;
-    if(q > 0) pick.push({sku: rows[i].sku, qty: q});
+    if(q > 0) pick.push({sku: rows[i].sku, qty: q, d: rows[i].d, cost: rows[i].cost});
   });
   if(!pick.length){ toast('Tick at least one part'); return; }
   const po = $('ordPo').value.trim();
@@ -937,7 +970,7 @@ $('ordSend').addEventListener('click', async () => {
   }
   $('ordSend').disabled = true; $('ordSend').textContent = 'Sending to WPS…';
   try{
-    const cart = await api('/api/wps-cart', {method: 'POST', body: JSON.stringify({po, items: pick, ticketId: T.id, replace})});
+    const cart = await api('/api/wps-cart', {method: 'POST', body: JSON.stringify({po, items: pick, ticketId: T.id, ticketNo: T.no, bike: $('cBike').value.trim(), replace})});
     T.wpsCart = cart;
     // WPS just quoted the shop's real price for each part; keep the shop-only cost in step
     cart.lines.forEach(r => {
@@ -970,6 +1003,120 @@ $('ordCheck').addEventListener('click', async () => {
     const anyShipped = r.orders.some(o => o.shipDate || o.tracking.length);
     if(anyShipped) toast('WPS shows it shipped');
   }catch(e){ $('ordStat').innerHTML = '<div class="ostat bad">' + esc(e.message) + '</div>'; }
+});
+
+/* ---------------- Parts we keep special-ordering ---------------- */
+let SO = [];
+function sampleSO(){
+  // Demo only: made-up history so the screen can be shown before WPS is connected
+  const d = n => new Date(Date.now() - n * 86400000).toISOString();
+  const e = (sku, desc, cost, ages, bikes) => ages.map((a,i) => ({sku, d: desc, qty: 1, cost, po: 'INV-' + (1000 + a), ticket: 'INV-' + (1000 + a), bike: bikes[i % bikes.length], at: d(a)}));
+  return [].concat(
+    e('15-450R','EBC BRAKE PADS (sample)',26.36,[12,48,95,160],['2021 Yamaha YZ250F','2020 Yamaha YZ450F']),
+    e('49-1201','FIRE POWER BATTERY (sample)',54.10,[20,70,140],['2019 Honda CRF250L','2018 Honda Grom']),
+    e('84-1204','OIL FILTER (sample)',6.20,[5,33,61,90,120,150],['2022 Kawasaki KX450','2021 Yamaha YZ250F','2023 KTM 300 XC']),
+    e('87-4313','SHINKO 540 REAR 110/90-19 (sample)',71.39,[40,200],['2016 Honda XR650L']),
+    e('35-1022','CRUSH WASHERS 10 PK (sample)',3.80,[2,9,30],['Various']),
+    e('739-0270','RFX REAR BRAKE PADS (sample)',22.19,[180],['2019 Suzuki RM-Z250'])
+  );
+}
+function groupSO(entries, days){
+  const by = {};
+  entries.forEach(e => {
+    const g = by[e.sku] || (by[e.sku] = {sku: e.sku, d: e.d, cost: e.cost, qty: 0, tickets: new Set(), bikes: new Set(), last: ''});
+    g.qty += e.qty || 0; g.tickets.add(e.ticket || e.po); if(e.bike) g.bikes.add(e.bike);
+    if(e.at > g.last){ g.last = e.at; if(e.cost != null) g.cost = e.cost; if(e.d) g.d = e.d; }
+  });
+  const months = days / 30.44;
+  return Object.values(by).map(g => {
+    g.times = g.tickets.size;
+    // Keep enough for about a month of jobs, never less than one
+    g.keep = Math.max(1, Math.ceil(g.qty / months));
+    return g;
+  }).sort((a,b) => b.times - a.times || b.qty - a.qty || (b.cost || 0) - (a.cost || 0));
+}
+async function loadSO(){
+  const days = parseInt($('soDays').value, 10);
+  $('soList').innerHTML = '<div class="spin">Loading…</div>'; $('soSum').innerHTML = '';
+  let entries;
+  if(LIVE){
+    try{ entries = (await api('/api/special-orders?days=' + days)).entries; }
+    catch(e){ $('soList').innerHTML = '<div class="ostat bad">' + esc(e.message) + '</div>'; return; }
+  } else {
+    const since = new Date(Date.now() - days * 86400000).toISOString();
+    entries = sampleSO().filter(e => e.at >= since);
+  }
+  SO = groupSO(entries, days);
+  drawSO();
+}
+function drawSO(){
+  const repeat = SO.filter(g => g.times >= 2), once = SO.filter(g => g.times < 2);
+  $('soCount').textContent = (LIVE ? '' : 'Sample data · ') + SO.length + ' part' + (SO.length === 1 ? '' : 's') + ' ordered for jobs';
+  if(!SO.length){
+    $('soList').innerHTML = '<div class="empty"><b>Nothing yet</b>Parts show up here once they’re sent to a WPS cart from a ticket.</div>';
+    $('soStock').style.display = 'none'; return;
+  }
+  const row = (g, i, tick) => '<div class="sorow"><input type="checkbox" data-so="' + i + '"' + (tick ? ' checked' : '') + ' aria-label="Stock ' + esc(g.sku) + '">' +
+    '<div class="sod"><b>' + esc(g.sku) + '</b> ' + esc(g.d) +
+      '<small>' + g.qty + ' used · last ordered ' + new Date(g.last).toLocaleDateString() +
+      (g.bikes.size ? ' · ' + esc([...g.bikes].slice(0, 3).join(', ')) + (g.bikes.size > 3 ? ' +' + (g.bikes.size - 3) : '') : '') + '</small></div>' +
+    '<div class="cnt">' + g.times + '×<small>jobs</small></div>' +
+    '<div class="keep">Keep on shelf <input type="number" min="1" max="99" value="' + g.keep + '" data-keep="' + i + '" aria-label="Keep on shelf">' +
+      (g.cost != null ? '<span>· ' + money(g.cost) + ' each</span>' : '') + '</div></div>';
+  let html = '';
+  if(repeat.length) html += '<div class="sec-label" style="margin-top:6px">Ordered for 2 or more jobs — worth stocking</div>' + repeat.map(g => row(g, SO.indexOf(g), true)).join('');
+  if(once.length) html += '<div class="sec-label">Ordered for one job</div>' + once.map(g => row(g, SO.indexOf(g), false)).join('');
+  $('soList').innerHTML = html;
+  $('soStock').style.display = '';
+  drawSOSum();
+}
+function drawSOSum(){
+  const repeat = SO.filter(g => g.times >= 2);
+  let cost = 0, n = 0;
+  $('soList').querySelectorAll('input[data-so]').forEach(cb => {
+    if(!cb.checked) return;
+    const g = SO[+cb.dataset.so], k = parseInt($('soList').querySelector('[data-keep="' + cb.dataset.so + '"]').value, 10) || 0;
+    n += k; cost += (g.cost || 0) * k;
+  });
+  const jobs = repeat.reduce((s, g) => s + g.times, 0);
+  $('soSum').innerHTML = '<div class="sosum">' +
+    (repeat.length ? '<b>' + repeat.length + ' part' + (repeat.length === 1 ? '' : 's') + '</b> had to be ordered for <b>' + jobs + ' jobs</b> in this period. ' : 'No part has been ordered for more than one job yet. ') +
+    (n ? 'Stocking the ' + n + ' ticked would tie up about <b>' + money(cost) + '</b> on the shelf.' : '') + '</div>';
+}
+$('soBtn').addEventListener('click', () => { $('soSheet').classList.add('open'); loadSO(); });
+$('soDays').addEventListener('change', loadSO);
+$('soClose').addEventListener('click', () => $('soSheet').classList.remove('open'));
+$('soList').addEventListener('input', drawSOSum);
+$('soList').addEventListener('change', drawSOSum);
+$('soStock').addEventListener('click', async () => {
+  if(!LIVE){ toast('Connect WPS in Settings first — these are sample parts'); return; }
+  const items = [];
+  $('soList').querySelectorAll('input[data-so]').forEach(cb => {
+    if(!cb.checked) return;
+    const g = SO[+cb.dataset.so], k = parseInt($('soList').querySelector('[data-keep="' + cb.dataset.so + '"]').value, 10) || 0;
+    if(k > 0) items.push({sku: g.sku, qty: k, d: g.d, cost: g.cost});
+  });
+  if(!items.length){ toast('Tick at least one part'); return; }
+  const dt = new Date(), po = 'STOCK-' + String(dt.getMonth() + 1).padStart(2, '0') + String(dt.getDate()).padStart(2, '0') + '-' + String(dt.getHours()).padStart(2, '0') + String(dt.getMinutes()).padStart(2, '0');
+  if(!confirm('Put ' + items.length + ' part' + (items.length === 1 ? '' : 's') + ' in a WPS cart as PO ' + po + '?\n\nNothing is ordered until you submit it at wpsorders.com.')) return;
+  $('soStock').disabled = true; $('soStock').textContent = 'Sending to WPS…';
+  try{
+    const cart = await api('/api/wps-cart', {method: 'POST', body: JSON.stringify({po, items, stock: true})});
+    const bad = cart.lines.filter(l => !l.ok);
+    $('soSum').innerHTML = '<div class="ostat ' + (bad.length ? 'bad' : 'ok') + '">' + (cart.lines.length - bad.length) + ' of ' + cart.lines.length +
+      ' parts are in the WPS cart as PO <b>' + esc(po) + '</b>. <a href="https://www.wpsorders.com" target="_blank" rel="noopener">Open wpsorders.com</a> to review and submit.' +
+      (bad.length ? '<br>Not added: ' + bad.map(l => esc(l.sku) + ' (' + esc(l.error) + ')').join(', ') : '') + '</div>';
+  }catch(e){ $('soSum').innerHTML = '<div class="ostat bad">' + esc(e.message) + '</div>'; }
+  $('soStock').disabled = false; $('soStock').textContent = 'Put ticked parts in a WPS stock cart';
+});
+$('soCsv').addEventListener('click', () => {
+  if(!SO.length){ toast('Nothing to save yet'); return; }
+  const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+  const rows = [['Part #','Description','Jobs ordered for','Qty used','Last ordered','Cost each','Suggested on shelf','Bikes']].concat(
+    SO.map(g => [g.sku, g.d, g.times, g.qty, new Date(g.last).toLocaleDateString(), g.cost != null ? g.cost.toFixed(2) : '', g.keep, [...g.bikes].join('; ')]));
+  const url = URL.createObjectURL(new Blob(['﻿' + rows.map(r => r.map(q).join(',')).join('\r\n')], {type: 'text/csv'}));
+  const a = document.createElement('a'); a.href = url; a.download = 'special-orders-' + $('soDays').value + 'd.csv'; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
 });
 
 /* ---------------- PDF ---------------- */
