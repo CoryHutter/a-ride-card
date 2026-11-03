@@ -75,7 +75,7 @@ export default {
         const list = await fitList(env, ctx, vehicle);
         const words = q.split(/\s+/).filter(Boolean);
         const hits = list.filter(r => {
-          const hay = (r.s + ' ' + r.n).toLowerCase();
+          const hay = (r.s + ' ' + r.n + ' ' + r.pt + ' ' + r.bn).toLowerCase();
           return words.every(w => hay.includes(w));
         });
         const top = hits.slice(0, 40);
@@ -90,13 +90,19 @@ export default {
         let rows = [];
         const exact = await wpsGet(env, '/items?filter[sku]=' + encodeURIComponent(q) + '&page[size]=10');
         if (exact.ok) rows = (exact.body.data || []);
-        if (!rows.length) {
-          // Name contains; fall back to part-number prefix if the API rejects the operator
-          let r = await wpsGet(env, '/items?filter[name][con]=' + encodeURIComponent(q) + '&page[size]=40');
-          if (!r.ok) r = await wpsGet(env, '/items?filter[sku][pre]=' + encodeURIComponent(q) + '&page[size]=40');
+        if (!rows.length && /^[0-9][0-9A-Za-z-]{1,}$/.test(q)) {
+          const r = await wpsGet(env, '/items?filter[sku][pre]=' + encodeURIComponent(q) + '&page[size]=60');
           if (r.ok) rows = r.body.data || [];
         }
-        const top = rows.map(compact).slice(0, 40);
+        if (!rows.length) {
+          // Words in order, anything between them: "rear 110/90-19" -> %rear%110/90-19%
+          const like = '%' + q.split(/\s+/).join('%') + '%';
+          const r = await wpsGet(env, '/items?filter[name][like]=' + encodeURIComponent(like) + '&page[size]=80');
+          if (r.ok) rows = r.body.data || [];
+        }
+        const brands = await brandMap(env, ctx);
+        const top = rows.map(compact).filter(r => r.st !== 'NLA' && r.st !== 'DSC').slice(0, 40);
+        top.forEach(r => { r.bn = brands[r.b] || ''; });
         await addStock(env, top);
         return json({ parts: top.map(shape) }, 200, cors);
       }
@@ -216,7 +222,7 @@ function yearOf(v) {
 }
 
 const compact = r => ({
-  i: r.id, s: r.sku, n: r.name,
+  i: r.id, s: r.sku, n: r.name, b: r.brand_id || null, pt: r.product_type || '',
   l: parseFloat(r.list_price) || 0,
   d: parseFloat(r.standard_dealer_price) || null,
   st: r.status || ''
@@ -228,7 +234,9 @@ async function fitList(env, ctx, vehicle) {
   const hit = await env.TICKETS.get(key, 'json');
   if (hit) return hit;
   const rows = await wpsAll(env, ctx, '/vehicles/' + vehicle + '/items?page[size]=1000', 0);
+  const brands = await brandMap(env, ctx);
   const list = rows.map(compact).filter(r => r.st !== 'NLA' && r.st !== 'DSC');
+  list.forEach(r => { r.bn = brands[r.b] || ''; });
   ctx.waitUntil(env.TICKETS.put(key, JSON.stringify(list), { expirationTtl: 86400 }));
   return list;
 }
@@ -253,13 +261,13 @@ async function addStock(env, rows) {
   rows.forEach(x => { if (byId[x.i]) x.stk = byId[x.i]; });
 }
 
-const shape = r => ({ id: r.i, sku: r.s, name: r.n, retail: r.l, dealer: r.d, status: r.st, stock: r.stk || null });
+const shape = r => ({ id: r.i, sku: r.s, name: r.n, brand: r.bn || '', type: r.pt || '', retail: r.l, dealer: r.d, status: r.st, stock: r.stk || null });
 
 function findCost(body) {
   const d = body && (body.data || body);
   const row = Array.isArray(d) ? d[0] : d;
   if (!row) return null;
-  for (const k of ['dealer_price', 'price', 'cost', 'dealer_cost', 'your_price', 'net_price']) {
+  for (const k of ['actual_dealer_price', 'dealer_price', 'price', 'cost', 'dealer_cost', 'your_price', 'net_price']) {
     if (row[k] != null && !isNaN(parseFloat(row[k]))) return parseFloat(row[k]);
   }
   return null;
@@ -281,4 +289,15 @@ function summary(t) {
 function publicSummary(t) {
   return { id: t.id, no: t.no, saved: t.saved, bike: t.bike || '',
            work: (t.lines || []).map(l => l.d).slice(0, 8), status: t.status || '' };
+}
+
+/* WPS brand names by id, kept for a day */
+async function brandMap(env, ctx) {
+  const hit = await env.TICKETS.get('brands', 'json');
+  if (hit) return hit;
+  const rows = await wpsAll(env, ctx, '/brands?page[size]=1000', 0);
+  const map = {};
+  rows.forEach(b => { map[b.id] = b.name; });
+  ctx.waitUntil(env.TICKETS.put('brands', JSON.stringify(map), { expirationTtl: 86400 }));
+  return map;
 }

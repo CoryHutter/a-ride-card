@@ -465,20 +465,30 @@ $('cBike').addEventListener('input', () => { $('cBike').dataset.auto = '0'; });
 
 /* ---------------- Search ---------------- */
 let scope = 'fit', results = [], searchSeq = 0, tSearch;
-const CHIPS = ['Front tire','Rear tire','Tube','Brake pads','Chain','Sprocket','Battery','Oil filter','Air filter','Spark plug','Grips','Levers','Bearings','Seals'];
-$('chips').innerHTML = CHIPS.map(c => '<button class="chip" data-q="' + esc(c.toLowerCase()) + '">' + esc(c) + '</button>').join('');
+/* Quick buttons. WPS lists most wear parts by bike, but tires, tubes, batteries and oil aren't,
+   so those buttons search all of WPS (live) instead of "fits this bike". */
+const CHIPS = [
+  ['Brake pads','pads','fit'], ['Rotors','rotor','fit'], ['Sprockets','sprocket','fit'], ['Chain','chain','fit'],
+  ['Oil filter','oil filter','fit'], ['Air filter','air filter','fit'], ['Clutch','clutch','fit'], ['Levers','lever','fit'],
+  ['Bearings','bearing','fit'], ['Seals','seal','fit'],
+  ['Tires','tire','all'], ['Tubes','tube','all'], ['Battery','battery','all'], ['Oil','oil','all'], ['Spark plug','spark plug','all']
+];
+$('chips').innerHTML = CHIPS.map((c,i) => '<button class="chip" data-i="' + i + '">' + esc(c[0]) + '</button>').join('');
 $('chips').addEventListener('click', e => {
   const b = e.target.closest('.chip'); if(!b) return;
-  let q = b.dataset.q;
-  if(LIVE){ q = q.replace('front tire','tire').replace('rear tire','tire').replace('sprocket','sprocket'); }
-  $('q').value = q; renderList();
+  const c = CHIPS[+b.dataset.i];
+  if(LIVE && c[2] !== scope) setScope(c[2]);
+  $('q').value = LIVE ? c[1] : c[0].toLowerCase().replace(/s$/, ''); renderList();
+  if(LIVE && c[1] === 'tire') toast('Add the size to narrow it, e.g. tire 110/90-19');
 });
+function setScope(sc){
+  scope = sc;
+  [...$('scope').children].forEach(x => x.setAttribute('aria-pressed', x.dataset.s === sc));
+  $('q').placeholder = scope === 'fit' ? 'Search parts that fit…' : 'Part # or words, any WPS part…';
+}
 $('scope').addEventListener('click', e => {
   const b = e.target.closest('button'); if(!b) return;
-  scope = b.dataset.s;
-  [...$('scope').children].forEach(x => x.setAttribute('aria-pressed', x === b));
-  $('q').placeholder = scope === 'fit' ? 'Search parts that fit…' : 'Part # or words, any WPS part…';
-  renderList();
+  setScope(b.dataset.s); renderList();
 });
 $('q').addEventListener('input', () => { clearTimeout(tSearch); tSearch = setTimeout(renderList, 280); });
 $('clearQ').addEventListener('click', () => { $('q').value = ''; renderList(); $('q').focus(); });
@@ -508,7 +518,8 @@ function drawList(rows, label, extra){
   $('list').innerHTML = rows.map((p,i) =>
     '<button class="part" data-i="' + i + '">' +
       '<span class="pn">' + esc(p.sku) + '</span>' +
-      '<span class="d">' + esc(p.name) + '<small>' + stockTag(p.stock) + (p.status === 'CLO' ? 'Closeout' : '') + '</small></span>' +
+      '<span class="d">' + esc(p.name) + '<small>' + stockTag(p.stock) +
+        esc([p.brand, p.type].filter(Boolean).join(' · ')) + (p.status === 'CLO' ? ' · Closeout' : '') + '</small></span>' +
       '<span class="pr">' + money(p.retail) + '<small>retail</small></span>' +
     '</button>').join('') + (extra || '');
 }
@@ -527,7 +538,7 @@ async function renderList(){
       return;
     }
     if(!q){
-      drawList([], 'Parts for ' + vehicle.label, '<div class="empty"><b>Search what the job needs</b>Tap a button above or type a word like pads, chain, filter.</div>');
+      drawList([], 'Parts for ' + vehicle.label, '<div class="empty"><b>Search what the job needs</b>Tap a button above or type a word like pads, sprocket, filter. Tires, tubes and batteries aren’t listed by bike at WPS, so those buttons search all of WPS.</div>');
       return;
     }
     $('list').innerHTML = '<div class="spin">Searching WPS…</div>';
@@ -571,10 +582,11 @@ function addPart(p){
   if(!p) return;
   const ex = T.lines.find(l => l.sku === p.sku && !l.labor);
   if(ex){ ex.qty++; toast(p.sku + ' × ' + ex.qty); render(); return; }
-  const line = {sku: p.sku, wid: p.id, d: p.name, price: p.retail || 0, qty: 1, ovr: '', tax: true, labor: false,
+  const desc = (p.brand && p.name.toUpperCase().indexOf(p.brand.toUpperCase()) !== 0 ? p.brand + ' ' : '') + p.name;
+  const line = {sku: p.sku, wid: p.id, d: desc, price: p.retail || 0, qty: 1, ovr: '', tax: true, labor: false,
                 cost: p.dealer != null ? p.dealer : null, costSrc: p.dealer != null ? 'WPS standard dealer price' : '', fresh: true};
   T.lines.push(line);
-  toast((p.name.length > 34 ? p.sku : p.name) + ' added');
+  toast((desc.length > 34 ? p.sku : desc) + ' added');
   render();
   // Ask WPS for this shop's own price (their discounts) and use it if there is one
   if(LIVE && p.id){
