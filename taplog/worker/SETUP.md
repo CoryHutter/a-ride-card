@@ -49,6 +49,13 @@ On the **taplog-shop** overview page there is an address that looks like
 
 The badge at the top switches from "Sample parts" to **Live WPS**.
 
+## Ordering parts from WPS
+On a ticket, **Order parts from WPS** puts the ticket's WPS parts into a cart on the shop's
+WPS account, with the invoice number as the PO. **Nothing is ordered** until someone opens
+wpsorders.com and submits that cart, where shipping and warehouse can be changed too.
+**Check order status** shows WPS's status, backorders and tracking once it's submitted.
+The WPS key used in step 4 must have ordering turned on by WPS.
+
 ## Good to know
 - Prices: customer prices come from WPS retail. The shop-only cost comes from the account
   whose key is in step 4, so for a real shop, use **that shop's** WPS key.

@@ -139,6 +139,18 @@ button{font:inherit}
 .acts button.primary{background:var(--acc);border-color:var(--acc);color:#111}
 .acts button.ready{grid-column:1 / -1;background:var(--green);border-color:var(--green);color:#0d1a0f;font-size:15px;padding:13px}
 .acts button:active{opacity:.75}
+.acts button.order{grid-column:1 / -1;border-color:var(--acc);color:var(--acc)}
+.orow{display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+.orow input[type=checkbox]{width:20px;height:20px;accent-color:var(--acc)}
+.orow .od{font-size:13px;line-height:1.3;min-width:0;overflow-wrap:anywhere}
+.orow .od b{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--acc);font-weight:600;display:block}
+.orow input[type=number]{width:58px;background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--ink);padding:7px;text-align:center;font-family:"IBM Plex Mono",monospace;font-size:14px}
+.orow .res{grid-column:2 / -1;font-size:12px}
+.ok{color:var(--green)} .warn{color:var(--amber)} .bad{color:var(--red)}
+.po{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+.po input{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--ink);padding:9px;font-family:"IBM Plex Mono",monospace;font-size:14px}
+.ostat{font-size:13px;line-height:1.5;border:1px solid var(--line);border-radius:6px;padding:10px}
+.ostat a{color:var(--acc)}
 
 .sheet{position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.62);display:none;align-items:center;justify-content:center;padding:14px}
 .sheet.open{display:flex}
@@ -265,6 +277,7 @@ button{font:inherit}
       </div>
       <div class="acts">
         <button class="ready" id="readyBtn">Bike ready &mdash; text customer</button>
+        <button class="order" id="orderBtn">Order parts from WPS</button>
         <button id="addCustom">+ Custom line</button>
         <button id="quoteBtn">Quote</button>
         <button class="primary" id="printBtn">Print / PDF</button>
@@ -289,6 +302,25 @@ button{font:inherit}
       <button id="sCopy">Copy</button>
       <button id="sShare">Share&hellip;</button>
       <button id="sClose">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Order parts from WPS -->
+<div class="sheet" id="ordSheet">
+  <div class="panel">
+    <h3>Order parts from WPS</h3>
+    <div class="sub">This puts the parts in a cart on the shop&rsquo;s WPS account. <b>Nothing is ordered yet.</b>
+      Review it and submit at wpsorders.com, where shipping and warehouse can be changed too.</div>
+    <div class="po"><span>PO #</span><input id="ordPo" maxlength="20" autocapitalize="characters" spellcheck="false"></div>
+    <div id="ordList"></div>
+    <div id="ordStat"></div>
+    <div class="btns">
+      <button class="primary full" id="ordSend">Put in WPS cart</button>
+      <button id="ordCheck">Check order status</button>
+      <a class="full" id="ordSite" href="https://www.wpsorders.com" target="_blank" rel="noopener"
+         style="display:none;text-align:center;padding:12px 8px;border-radius:4px;font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:14px;letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--acc);color:var(--acc);text-decoration:none">Open wpsorders.com to submit</a>
+      <button id="ordClose">Close</button>
     </div>
   </div>
 </div>
@@ -563,7 +595,7 @@ $('list').addEventListener('click', e => {
 
 /* ---------------- Ticket ---------------- */
 let T = blankTicket();
-function blankTicket(){ return {id: null, no: null, lines: []}; }
+function blankTicket(){ return {id: null, no: null, lines: [], wpsCart: null}; }
 
 function renderLabor(){
   $('laborList').innerHTML = laborMenu().map((l,i) =>
@@ -584,7 +616,7 @@ function addPart(p){
   if(ex){ ex.qty++; toast(p.sku + ' × ' + ex.qty); render(); return; }
   const desc = (p.brand && p.name.toUpperCase().indexOf(p.brand.toUpperCase()) !== 0 ? p.brand + ' ' : '') + p.name;
   const line = {sku: p.sku, wid: p.id, d: desc, price: p.retail || 0, qty: 1, ovr: '', tax: true, labor: false,
-                cost: p.dealer != null ? p.dealer : null, costSrc: p.dealer != null ? 'WPS standard dealer price' : '', fresh: true};
+                cost: p.dealer != null ? p.dealer : null, costSrc: p.dealer != null ? 'WPS standard dealer price' : '', stock: p.stock || null, fresh: true};
   T.lines.push(line);
   toast((desc.length > 34 ? p.sku : desc) + ' added');
   render();
@@ -737,10 +769,10 @@ function ticketData(){
     bike: $('cBike').value.trim(), miles: $('cMiles').value.trim(), tag: $('cTag').value.trim(),
     notes: $('cNotes').value.trim(), status: $('cStatus').value,
     lines: T.lines.map(l => ({sku: l.sku, wid: l.wid || null, d: l.d, qty: l.qty, price: l.price, ovr: l.ovr,
-      unit: unitSell(l), amt: lineTotal(l), tax: l.tax, labor: l.labor, cost: l.cost, costSrc: l.costSrc || ''})),
+      unit: unitSell(l), amt: lineTotal(l), tax: l.tax, labor: l.labor, cost: l.cost, costSrc: l.costSrc || '', stock: l.stock || null})),
     totals: {parts: c.partsSub, labor: c.laborSub, discPct: c.pct, disc: c.disc, supplies: c.supplies,
              suppliesTaxed: !!SET.supTax, taxRate: c.rate, tax: c.tax, total: c.total},
-    policy: SET.policy, vehicle: vehicle || null
+    policy: SET.policy, vehicle: vehicle || null, wpsCart: T.wpsCart || null
   };
 }
 function localTickets(){ try{ return JSON.parse(store.get('tlg_tickets') || '[]'); }catch(e){ return []; } }
@@ -766,7 +798,7 @@ async function saveTicket(quiet){
 $('saveBtn').addEventListener('click', () => saveTicket(false));
 
 function openTicket(t){
-  T = {id: t.id, no: t.no, lines: (t.lines || []).map(l => Object.assign({}, l, {ovr: l.ovr == null ? '' : l.ovr}))};
+  T = {id: t.id, no: t.no, wpsCart: t.wpsCart || null, lines: (t.lines || []).map(l => Object.assign({}, l, {ovr: l.ovr == null ? '' : l.ovr}))};
   $('cName').value = (t.customer && t.customer.name) || ''; $('cPhone').value = (t.customer && t.customer.phone) || '';
   $('cBike').value = t.bike || ''; $('cBike').dataset.auto = '0';
   $('cMiles').value = t.miles || ''; $('cTag').value = t.tag || ''; $('cNotes').value = t.notes || '';
@@ -852,6 +884,93 @@ $('sCopy').addEventListener('click', () => {
 $('sShare').addEventListener('click', () => navigator.share({text: $('sendText').value}).catch(() => {}));
 $('sClose').addEventListener('click', () => $('sendSheet').classList.remove('open'));
 document.querySelectorAll('.sheet').forEach(s => s.addEventListener('click', e => { if(e.target === s) s.classList.remove('open'); }));
+
+/* ---------------- Order parts from WPS (cart only) ---------------- */
+const wpsLines = () => T.lines.filter(l => !l.labor && l.sku && !/^SAMPLE-/.test(l.sku));
+function trackLink(num, via){
+  const u = /^UP/i.test(via || '') ? 'https://www.ups.com/track?tracknum=' : (/^US|^PM/i.test(via || '') ? 'https://tools.usps.com/go/TrackConfirmAction?tLabels=' : 'https://www.fedex.com/fedextrack/?trknbr=');
+  return '<a href="' + u + encodeURIComponent(num) + '" target="_blank" rel="noopener">' + esc(num) + '</a>';
+}
+function drawOrder(){
+  const rows = wpsLines(), cart = T.wpsCart;
+  const res = sku => cart && cart.lines ? cart.lines.find(x => x.sku === sku) : null;
+  $('ordList').innerHTML = rows.length ? rows.map((l,i) => {
+    const r = res(l.sku);
+    const stock = l.stock ? (l.stock.a > 0 ? 'Ashley ' + (l.stock.a >= 25 ? '25+' : l.stock.a) : 'Not in Ashley') + ' · WPS ' + (l.stock.t >= 25 ? '25+' : l.stock.t) : '';
+    return '<div class="orow"><input type="checkbox" data-i="' + i + '" checked aria-label="Include">' +
+      '<div class="od"><b>' + esc(l.sku) + '</b>' + esc(l.d) + (stock ? '<div style="color:var(--muted);font-size:11.5px">' + esc(stock) + '</div>' : '') + '</div>' +
+      '<input type="number" min="1" max="99" value="' + l.qty + '" data-q="' + i + '" aria-label="Quantity">' +
+      (r ? '<div class="res ' + (!r.ok ? 'bad' : (r.backorder > 0 ? 'warn' : 'ok')) + '">' +
+        (!r.ok ? 'Not added: ' + esc(r.error) : (r.backorder > 0 ? 'In cart — ' + r.available + ' available, ' + r.backorder + ' on backorder' : 'In cart — available') +
+        (r.ok && r.price != null ? ' · your price ' + money(r.price) : '')) + '</div>' : '') +
+    '</div>';
+  }).join('') : '<div class="empty"><b>No WPS parts on this ticket</b>Labor and custom lines aren’t ordered. Add WPS parts first.</div>';
+  $('ordSend').textContent = cart ? 'Send to WPS cart again' : 'Put in WPS cart';
+  $('ordSend').style.display = rows.length ? '' : 'none';
+  $('ordSite').style.display = cart ? '' : 'none';
+  $('ordCheck').style.display = cart ? '' : 'none';
+  if(cart && !$('ordStat').innerHTML) $('ordStat').innerHTML = '<div class="ostat">In WPS cart since ' + new Date(cart.at).toLocaleString() + ' as PO <b>' + esc(cart.po) + '</b>.</div>';
+}
+$('orderBtn').addEventListener('click', async () => {
+  if(!LIVE){ toast('Connect WPS in Settings first — ordering needs the live connection'); return; }
+  if(!wpsLines().length){ toast('No WPS parts on this ticket'); return; }
+  if(!T.no){ const t = await saveTicket(true); if(!t) return; }
+  $('ordPo').value = (T.wpsCart && T.wpsCart.po) || T.no || '';
+  $('ordStat').innerHTML = '';
+  drawOrder(); $('ordSheet').classList.add('open');
+});
+$('ordClose').addEventListener('click', () => $('ordSheet').classList.remove('open'));
+$('ordSend').addEventListener('click', async () => {
+  const rows = wpsLines(), pick = [];
+  $('ordList').querySelectorAll('input[type=checkbox]').forEach(cb => {
+    if(!cb.checked) return;
+    const i = +cb.dataset.i, q = parseInt($('ordList').querySelector('[data-q="' + i + '"]').value, 10) || 0;
+    if(q > 0) pick.push({sku: rows[i].sku, qty: q});
+  });
+  if(!pick.length){ toast('Tick at least one part'); return; }
+  const po = $('ordPo').value.trim();
+  if(!/^[A-Za-z0-9 _.\-]{3,20}$/.test(po)){ toast('PO must be 3–20 letters, numbers or dashes'); return; }
+  let replace = false;
+  if(T.wpsCart && T.wpsCart.po === po){
+    if(!confirm('PO ' + po + ' was already sent to a WPS cart. Replace that cart with this list?\n\nIf it was already submitted as an order at wpsorders.com, use a new PO instead.')) return;
+    replace = true;
+  }
+  $('ordSend').disabled = true; $('ordSend').textContent = 'Sending to WPS…';
+  try{
+    const cart = await api('/api/wps-cart', {method: 'POST', body: JSON.stringify({po, items: pick, ticketId: T.id, replace})});
+    T.wpsCart = cart;
+    // WPS just quoted the shop's real price for each part; keep the shop-only cost in step
+    cart.lines.forEach(r => {
+      if(!r.ok || r.price == null) return;
+      T.lines.filter(l => l.sku === r.sku && !l.labor).forEach(l => { l.cost = r.price; l.costSrc = 'your WPS price'; });
+    });
+    render();
+    const bad = cart.lines.filter(l => !l.ok).length, bo = cart.lines.filter(l => l.ok && l.backorder > 0).length;
+    if($('cStatus').value === 'Open') $('cStatus').value = 'Waiting on parts';
+    await saveTicket(true);
+    $('ordStat').innerHTML = '<div class="ostat ' + (bad ? 'bad' : 'ok') + '">' +
+      (cart.lines.length - bad) + ' of ' + cart.lines.length + ' parts are in the WPS cart as PO <b>' + esc(po) + '</b>' +
+      (bo ? ', ' + bo + ' with some on backorder' : '') + '. Open wpsorders.com to review and submit.</div>';
+  }catch(e){
+    $('ordStat').innerHTML = '<div class="ostat bad">' + esc(e.message) + '</div>';
+  }
+  $('ordSend').disabled = false; drawOrder();
+});
+$('ordCheck').addEventListener('click', async () => {
+  const po = (T.wpsCart && T.wpsCart.po) || $('ordPo').value.trim();
+  $('ordStat').innerHTML = '<div class="ostat">Checking WPS…</div>';
+  try{
+    const r = await api('/api/wps-order/' + encodeURIComponent(po));
+    if(!r.found){ $('ordStat').innerHTML = '<div class="ostat">Not submitted yet. PO <b>' + esc(po) + '</b> is still a cart — submit it at wpsorders.com.</div>'; return; }
+    $('ordStat').innerHTML = '<div class="ostat">' + r.orders.map(o =>
+      '<div><b>' + esc(o.status) + '</b> · order ' + esc(o.number) + ' · from ' + esc(o.warehouse) + (o.shipDate ? ' · shipped ' + esc(o.shipDate) : '') +
+      (o.tracking.length ? '<br>Tracking: ' + o.tracking.map(n => trackLink(n, o.shipVia)).join(', ') : '') +
+      '<br><span style="color:var(--muted)">' + o.items.map(i => esc(i.sku) + ' ×' + i.ordered + (i.backorder ? ' (' + i.backorder + ' backordered)' : '')).join(', ') + '</span></div>'
+    ).join('<hr style="border:0;border-top:1px solid var(--line)">') + '</div>';
+    const anyShipped = r.orders.some(o => o.shipDate || o.tracking.length);
+    if(anyShipped) toast('WPS shows it shipped');
+  }catch(e){ $('ordStat').innerHTML = '<div class="ostat bad">' + esc(e.message) + '</div>'; }
+});
 
 /* ---------------- PDF ---------------- */
 const PDF_W = {

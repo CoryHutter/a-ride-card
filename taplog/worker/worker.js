@@ -114,6 +114,57 @@ export default {
         return json({ cost: findCost(r.body) }, 200, cors);
       }
 
+      // ---- WPS cart: puts the ticket's parts in a cart on the shop's WPS account.
+      //      Nothing is ordered until someone submits that cart at wpsorders.com. ----
+      if (req.method === 'POST' && p === '/api/wps-cart') {
+        const b = await req.json();
+        const po = String(b.po || '').trim();
+        if (!/^[A-Za-z0-9 _.\-]{3,20}$/.test(po)) return json({ error: 'PO number must be 3 to 20 letters, numbers or dashes' }, 400, cors);
+        const items = (Array.isArray(b.items) ? b.items : [])
+          .map(i => ({ sku: String(i.sku || '').trim(), qty: parseInt(i.qty, 10) }))
+          .filter(i => i.sku && i.qty > 0 && i.qty < 100).slice(0, 60);
+        if (!items.length) return json({ error: 'No WPS parts to put in the cart' }, 400, cors);
+
+        if (b.replace) await wpsSend(env, 'DELETE', '/carts/' + encodeURIComponent(po));
+        const c = await wpsSend(env, 'POST', '/carts', { po_number: po });
+        if (!c.ok) return json({ error: 'WPS wouldn’t start the cart: ' + wpsMsg(c.body) }, 400, cors);
+        const cartNo = c.body && c.body.data && c.body.data.cart_number;
+
+        const lines = [];
+        for (const it of items) {
+          const r = await wpsSend(env, 'POST', '/carts/' + encodeURIComponent(po) + '/items', { item_sku: it.sku, quantity: it.qty });
+          const d = r.body && r.body.data;
+          lines.push(r.ok && d
+            ? { sku: it.sku, qty: it.qty, ok: true, available: d.available_quantity, backorder: d.backorder_quantity, price: d.dealer_price }
+            : { sku: it.sku, qty: it.qty, ok: false, error: wpsMsg(r.body) });
+        }
+        const cart = { po, cartNo, at: new Date().toISOString(), lines };
+
+        if (b.ticketId && /^[A-Za-z0-9]{6,24}$/.test(b.ticketId)) {
+          const t = await env.TICKETS.get('t:' + b.ticketId, 'json');
+          if (t) { t.wpsCart = cart; await env.TICKETS.put('t:' + t.id, JSON.stringify(t)); }
+        }
+        return json(cart, 200, cors);
+      }
+      if (req.method === 'POST' && (m = p.match(/^\/api\/wps-cart\/([A-Za-z0-9 _.\-]{3,20})\/delete$/))) {
+        const r = await wpsSend(env, 'DELETE', '/carts/' + encodeURIComponent(decodeURIComponent(m[1])));
+        return json({ ok: r.ok || r.status === 204 }, 200, cors);
+      }
+      if (req.method === 'GET' && (m = p.match(/^\/api\/wps-order\/(.{3,40})$/))) {
+        const po = decodeURIComponent(m[1]);
+        const r = await wpsGet(env, '/orders/' + encodeURIComponent(po));
+        if (!r.ok) return json({ found: false }, 200, cors);
+        const o = r.body.data || {};
+        return json({
+          found: true,
+          orders: (o.order_details || []).map(d => ({
+            number: d.order_number, status: d.order_status, warehouse: d.warehouse, shipVia: d.ship_via,
+            orderDate: d.order_date, shipDate: d.ship_date, total: d.order_total, tracking: d.tracking_numbers || [],
+            items: (d.items || []).map(i => ({ sku: i.sku, ordered: i.order_quantity, shipped: i.ship_quantity, backorder: i.backorder_quantity }))
+          }))
+        }, 200, cors);
+      }
+
       // ---- Tickets ----
       if (req.method === 'POST' && p === '/api/tickets') {
         const t = await req.json();
@@ -189,6 +240,26 @@ async function wpsGet(env, path) {
   let body = null;
   try { body = await r.json(); } catch (e) {}
   return { ok: r.ok, status: r.status, body };
+}
+
+async function wpsSend(env, method, path, body) {
+  if (!env.WPS_TOKEN) throw new Error('WPS key not set on the middleman');
+  const r = await fetch(WPS + path, {
+    method,
+    headers: { Authorization: 'Bearer ' + env.WPS_TOKEN, Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  let out = null;
+  try { out = await r.json(); } catch (e) {}
+  return { ok: r.ok, status: r.status, body: out };
+}
+function wpsMsg(b) {
+  if (!b) return 'no answer';
+  if (b.errors) {
+    const all = [].concat(...Object.values(b.errors).map(v => Array.isArray(v) ? v : [v]));
+    if (all.length) return all.join(' ');
+  }
+  return b.message || 'unknown error';
 }
 
 /* Follow WPS cursor pages (up to a limit) and keep the result for `ttl` seconds. */
