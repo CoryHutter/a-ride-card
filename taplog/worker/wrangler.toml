@@ -1,0 +1,15 @@
+name = "taplog-shop"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+
+[vars]
+ALLOWED_ORIGIN = "https://coryhutter.github.io"
+
+# Paste the KV namespace id Cloudflare gives you (see SETUP.md, step 3)
+[[kv_namespaces]]
+binding = "TICKETS"
+id = "PASTE_KV_ID_HERE"
+
+# Secrets are NOT stored here. Set them in the Cloudflare dashboard:
+#   WPS_TOKEN  (the shop's WPS API token)
+#   SHOP_KEY   (a password the shop's iPad will use)

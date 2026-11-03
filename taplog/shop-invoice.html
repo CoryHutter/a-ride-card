@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Shop Invoice</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="config.js"></script>
+<style>
+:root{
+  --bg:#15171B; --panel:#1E2127; --panel-2:#262A31; --line:#363B44;
+  --acc:#E8742A; --acc-dim:#9C5420; --ink:#F1F2F4; --muted:#949AA6;
+  --green:#4FA85C; --red:#D0493D; --amber:#D9A43A; --pad:16px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overscroll-behavior:none;overflow-x:hidden;max-width:100vw}
+body{background:var(--bg);color:var(--ink);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:15px;line-height:1.4}
+h1,h2,h3{font-family:"Barlow Condensed",Impact,sans-serif;font-weight:600;letter-spacing:.02em;margin:0}
+button{font:inherit}
+
+.app{display:grid;grid-template-columns:1fr;height:100dvh;overflow:hidden}
+.app > *{min-width:0}
+@media(min-width:900px){.app{grid-template-columns:1fr 480px}}
+@media(min-width:1280px){.app{grid-template-columns:1fr 560px}}
+
+.catalog{display:flex;flex-direction:column;min-height:0;border-right:1px solid var(--line)}
+.masthead{padding:14px var(--pad) 12px;border-bottom:1px solid var(--line);background:var(--panel)}
+.brand{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.brand h1{font-size:26px;line-height:1;text-transform:uppercase}
+.brand .tag{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.brand .sp{flex:1}
+.mode{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+  padding:4px 9px;border-radius:3px;border:1px solid var(--amber);color:var(--amber)}
+.mode.live{border-color:var(--green);color:var(--green)}
+.gear{background:transparent;border:1px solid var(--line);color:var(--ink);border-radius:5px;padding:7px 11px;cursor:pointer;font-size:13px}
+
+.biketitle{margin-top:13px;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--acc-dim);font-weight:600}
+.ymm{margin-top:5px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ymmsel{position:relative;background:var(--bg);border:1px solid var(--acc-dim);border-left:3px solid var(--acc);border-radius:5px;padding:7px 12px 8px;min-width:0}
+.ymmsel.wide{grid-column:1 / -1}
+.ymmlab{display:block;font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.19em;text-transform:uppercase;color:var(--muted)}
+.ymmsel::after{content:"+";position:absolute;right:13px;top:50%;transform:translateY(-30%);color:var(--acc);pointer-events:none;font-size:22px;font-weight:300;line-height:1}
+.ymmsel select{appearance:none;-webkit-appearance:none;width:100%;background:transparent;border:0;padding:1px 26px 0 0;color:var(--ink);
+  font-family:"Barlow Condensed",sans-serif;font-size:22px;font-weight:700;letter-spacing:.02em;line-height:1.16;cursor:pointer;text-overflow:ellipsis}
+.ymmsel select:focus{outline:none}
+.ymmsel select option{background:var(--panel);color:var(--ink)}
+@media(min-width:620px){.ymm{grid-template-columns:1.2fr 1.6fr 110px}.ymmsel.wide{grid-column:auto}}
+.demo-note{margin-top:10px;font-size:12.5px;color:var(--amber);line-height:1.45}
+
+.tools{padding:12px var(--pad) 10px;border-bottom:1px solid var(--line);background:var(--panel)}
+.scope{display:flex;gap:6px;margin-bottom:9px}
+.scope button{flex:1;padding:8px;border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:5px;cursor:pointer;font-size:13px;font-weight:600}
+.scope button[aria-pressed="true"]{border-color:var(--acc);color:var(--ink);background:var(--panel-2)}
+.search{position:relative}
+.search input{width:100%;padding:14px 44px 14px 14px;font-size:17px;background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--ink);font-family:"IBM Plex Mono",monospace}
+.search input:focus{outline:none;border-color:var(--acc)}
+.search .x{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:34px;height:34px;border:0;background:transparent;color:var(--muted);font-size:20px;cursor:pointer}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-top:10px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;padding:7px 12px;border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:20px;font-size:12.5px;cursor:pointer;white-space:nowrap;font-weight:500}
+.chip:active{background:var(--acc);color:var(--bg)}
+
+.scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px var(--pad) 120px}
+.sec-label{font-family:"Barlow Condensed",sans-serif;font-size:13px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--acc-dim);margin:18px 0 8px;padding-bottom:5px;border-bottom:1px solid var(--line)}
+.sec-label:first-child{margin-top:0}
+.labor{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
+.lab{text-align:left;padding:10px 11px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:5px;cursor:pointer}
+.lab b{display:block;font-size:13px;font-weight:600;line-height:1.25}
+.lab span{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--acc)}
+.lab:active{border-color:var(--acc)}
+
+.part{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:11px 12px;margin-bottom:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:4px;cursor:pointer}
+.part:active{background:var(--panel-2);border-color:var(--acc)}
+.part .pn{font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:600;color:var(--acc);flex:0 0 118px;overflow-wrap:anywhere}
+.part .d{flex:1;min-width:0;font-size:13.5px;line-height:1.3;overflow-wrap:anywhere}
+.part .d small{display:block;color:var(--muted);font-size:11px;margin-top:3px}
+.part .pr{font-family:"IBM Plex Mono",monospace;font-size:13px;flex:0 0 auto;text-align:right}
+.part .pr small{display:block;font-size:10.5px;color:var(--muted)}
+.stk{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.06em;padding:1px 6px;border-radius:2px;border:1px solid var(--line);margin-right:6px}
+.stk.in{border-color:var(--green);color:var(--green)}
+.stk.lo{border-color:var(--amber);color:var(--amber)}
+.stk.out{border-color:var(--red);color:var(--red)}
+@media(max-width:560px){.part{flex-wrap:wrap}.part .pn{flex:0 0 100%}}
+.empty{padding:34px 10px;text-align:center;color:var(--muted)}
+.empty b{display:block;font-family:"Barlow Condensed",sans-serif;font-size:20px;color:var(--ink);margin-bottom:6px}
+.more{display:block;width:100%;padding:10px;margin-top:4px;border:1px dashed var(--line);background:transparent;color:var(--muted);border-radius:5px;cursor:pointer}
+
+.ticket{display:flex;flex-direction:column;min-height:0;background:var(--panel);position:relative;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.ticket::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:repeating-linear-gradient(to bottom,var(--acc) 0 5px,transparent 5px 12px);opacity:.45}
+.t-head{padding:14px var(--pad) 10px;border-bottom:1px solid var(--line)}
+.t-head .r1{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.t-head h2{font-size:20px;text-transform:uppercase;letter-spacing:.1em}
+.t-head .inv{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--muted)}
+.cust{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
+.cust input,.cust select{background:var(--bg);border:1px solid var(--line);border-radius:3px;color:var(--ink);padding:9px;font-size:14px;width:100%;font-family:inherit}
+.cust input:focus,.cust select:focus{outline:none;border-color:var(--acc)}
+.cust .wide{grid-column:1 / -1}
+.lines{flex:1 0 auto;padding:10px var(--pad)}
+.line{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.line.new{animation:slide .22s ease-out}
+@keyframes slide{from{opacity:0;transform:translateX(10px)}to{opacity:1;transform:none}}
+.line .info{min-width:0}
+.line .lpn{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--acc);font-weight:600}
+.line .ld{font-size:13px;line-height:1.3;overflow-wrap:anywhere}
+.line .ctl{display:flex;align-items:center;gap:6px}
+.qty{display:flex;align-items:center;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.qty button{width:34px;height:34px;border:0;background:var(--panel-2);color:var(--ink);font-size:18px;cursor:pointer;font-family:"IBM Plex Mono",monospace}
+.qty button:active{background:var(--acc);color:var(--bg)}
+.qty span{width:34px;text-align:center;font-family:"IBM Plex Mono",monospace;font-size:14px}
+.line .amt{font-family:"IBM Plex Mono",monospace;font-size:14px;min-width:74px;text-align:right}
+.line .del{width:32px;height:32px;border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:4px;font-size:16px;cursor:pointer}
+.line .ovr,.line .cost{grid-column:1 / -1;display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--muted);flex-wrap:wrap}
+.line input{background:var(--bg);border:1px solid var(--line);border-radius:3px;color:var(--ink);padding:5px 7px;width:88px;font-family:"IBM Plex Mono",monospace;font-size:12.5px}
+.line .cost input{border-style:dashed;border-color:var(--acc-dim)}
+.line .cost .mg{margin-left:auto;font-family:"IBM Plex Mono",monospace;color:var(--ink)}
+.line .cost .mg.none{color:var(--muted);font-family:inherit}
+.taxtog{margin-left:auto;padding:4px 9px;border-radius:3px;cursor:pointer;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;font-weight:600;border:1px solid var(--line);background:transparent;color:var(--muted)}
+.taxtog.on{border-color:var(--acc-dim);color:var(--acc)}
+.blank{padding:40px 16px;text-align:center;color:var(--muted)}
+.blank b{display:block;font-family:"Barlow Condensed",sans-serif;font-size:19px;color:var(--ink);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em}
+
+.t-foot{border-top:1px solid var(--line);padding:12px var(--pad) 24px;background:var(--panel-2)}
+.trow{display:flex;justify-content:space-between;align-items:center;font-size:13.5px;padding:3px 0;color:var(--muted);gap:8px}
+.trow b{font-family:"IBM Plex Mono",monospace;color:var(--ink);font-weight:500}
+.trow input,.trow select{background:var(--bg);border:1px solid var(--line);border-radius:3px;color:var(--ink);padding:5px 7px;width:82px;text-align:right;font-family:"IBM Plex Mono",monospace;font-size:12.5px}
+.grand{display:flex;justify-content:space-between;align-items:baseline;margin-top:8px;padding-top:10px;border-top:2px solid var(--acc)}
+.grand span{font-family:"Barlow Condensed",sans-serif;font-size:15px;letter-spacing:.16em;text-transform:uppercase;color:var(--acc)}
+.grand b{font-family:"Barlow Condensed",sans-serif;font-size:38px;font-weight:700;line-height:1}
+.shop{margin-top:11px;padding:9px 11px 8px;border:1px dashed var(--acc-dim);border-radius:6px}
+.shop .sh{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--acc-dim);font-weight:600;margin-bottom:3px}
+.shop .miss{font-size:11.5px;color:var(--amber);margin-top:3px}
+.neg{color:var(--red) !important}
+.acts{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:11px}
+.acts button{padding:11px 6px;border-radius:4px;font-size:12.5px;cursor:pointer;font-family:"Barlow Condensed",sans-serif;font-weight:600;letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.acts button.primary{background:var(--acc);border-color:var(--acc);color:#111}
+.acts button.ready{grid-column:1 / -1;background:var(--green);border-color:var(--green);color:#0d1a0f;font-size:15px;padding:13px}
+.acts button:active{opacity:.75}
+
+.sheet{position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.62);display:none;align-items:center;justify-content:center;padding:14px}
+.sheet.open{display:flex}
+.panel{background:var(--bg);border:1px solid var(--acc);border-radius:8px;width:100%;max-width:560px;max-height:92vh;overflow-y:auto;display:flex;flex-direction:column;padding:16px;gap:10px}
+.panel h3{font-size:20px;letter-spacing:.12em;text-transform:uppercase;color:var(--acc)}
+.panel .sub{font-size:12.5px;color:var(--muted);line-height:1.45}
+.panel textarea{min-height:200px;width:100%;background:transparent;color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:10px;font-family:"IBM Plex Mono",monospace;font-size:12.5px;line-height:1.45;resize:vertical}
+.form{display:grid;grid-template-columns:1fr;gap:9px}
+.form label{display:flex;flex-direction:column;gap:4px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.form input,.form textarea{background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--ink);padding:9px;font-size:14px;font-family:inherit;letter-spacing:0;text-transform:none}
+.form textarea{min-height:130px;font-family:"IBM Plex Mono",monospace;font-size:12.5px}
+.form .row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.form .chk{flex-direction:row;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink)}
+.form h4{margin:8px 0 0;font-family:"Barlow Condensed",sans-serif;font-size:14px;letter-spacing:.16em;text-transform:uppercase;color:var(--acc-dim);border-bottom:1px solid var(--line);padding-bottom:4px}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.btns button{padding:12px 8px;border-radius:4px;font-family:"Barlow Condensed",sans-serif;font-weight:600;font-size:14px;letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
+.btns button.primary{background:var(--acc);border-color:var(--acc);color:#111}
+.btns .full{grid-column:1/-1}
+.tk{display:flex;justify-content:space-between;gap:10px;width:100%;text-align:left;padding:10px 11px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:5px;cursor:pointer;margin-bottom:6px}
+.tk small{display:block;color:var(--muted);font-size:11.5px}
+.tk b{font-family:"IBM Plex Mono",monospace;font-weight:500}
+.status{font-size:12.5px;padding:8px 10px;border-radius:5px;border:1px solid var(--line)}
+.status.ok{border-color:var(--green);color:var(--green)}
+.status.bad{border-color:var(--red);color:var(--red)}
+
+.fab{position:fixed;left:12px;right:12px;bottom:12px;z-index:40;padding:15px;border:0;border-radius:8px;background:var(--acc);color:#111;font-family:"Barlow Condensed",sans-serif;font-size:17px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;box-shadow:0 6px 22px rgba(0,0,0,.45);cursor:pointer;display:flex;justify-content:space-between}
+@media(max-width:899px){
+  .ticket{position:fixed;inset:0;z-index:50;transform:translateY(100%);transition:transform .26s ease}
+  .ticket.open{transform:none}
+  .closebtn{display:block !important}
+}
+@media(min-width:900px){.fab{display:none !important}}
+.closebtn{display:none;background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:4px;padding:5px 11px;font-size:12px;cursor:pointer}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:88px;z-index:95;background:var(--acc);color:#111;padding:9px 18px;border-radius:20px;font-weight:600;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:88vw;text-align:center}
+.toast.show{opacity:1}
+.spin{color:var(--muted);padding:24px;text-align:center;font-size:13px}
+</style>
+</head>
+<body>
+<div class="app">
+  <section class="catalog">
+    <div class="masthead">
+      <div class="brand">
+        <h1 id="shopName">Shop</h1>
+        <div class="tag">Invoice</div>
+        <div class="sp"></div>
+        <span class="mode" id="mode">Sample parts</span>
+        <button class="gear" id="gearBtn" aria-label="Settings">Settings</button>
+      </div>
+      <div id="bikeBox">
+        <div class="biketitle">Bike &mdash; picks the parts that fit</div>
+        <div class="ymm">
+          <div class="ymmsel"><span class="ymmlab">Make</span><select id="selMake" aria-label="Make"></select></div>
+          <div class="ymmsel wide"><span class="ymmlab">Model</span><select id="selModel" aria-label="Model"></select></div>
+          <div class="ymmsel"><span class="ymmlab">Year</span><select id="selYear" aria-label="Year"></select></div>
+        </div>
+      </div>
+      <div class="demo-note" id="demoNote" style="display:none">
+        Showing sample parts with made-up prices so you can try the screen. Once the WPS connection is set up in Settings,
+        this switches to real WPS parts that fit the customer's bike, with live stock and the shop's own cost.
+      </div>
+    </div>
+
+    <div class="tools">
+      <div class="scope" id="scope">
+        <button data-s="fit" aria-pressed="true">Fits this bike</button>
+        <button data-s="all" aria-pressed="false">All WPS / part #</button>
+      </div>
+      <div class="search">
+        <input id="q" type="search" inputmode="search" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Search or scan a part&hellip;">
+        <button class="x" id="clearQ" aria-label="Clear search">&times;</button>
+      </div>
+      <div class="chips" id="chips"></div>
+    </div>
+
+    <div class="scroll" id="scroll">
+      <div class="sec-label">Labor</div>
+      <div class="labor" id="laborList"></div>
+      <div class="sec-label" id="partsLabel">Parts</div>
+      <div id="list"></div>
+    </div>
+  </section>
+
+  <aside class="ticket" id="ticket">
+    <div class="t-head">
+      <div class="r1">
+        <h2>Work Order</h2>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div class="inv" id="invNo">New</div>
+          <button class="closebtn" id="closeT">Back</button>
+        </div>
+      </div>
+      <div class="cust">
+        <input id="cName" placeholder="Customer name" autocomplete="off">
+        <input id="cPhone" placeholder="Mobile number" inputmode="tel" autocomplete="off">
+        <input id="cBike" class="wide" placeholder="Bike (year, make, model)">
+        <input id="cMiles" placeholder="Miles / hours">
+        <input id="cTag" placeholder="TapLog tag #" autocapitalize="off">
+        <input id="cNotes" class="wide" placeholder="Job notes / customer concern">
+        <select id="cStatus" class="wide" aria-label="Status">
+          <option value="Open">Status: Open</option>
+          <option value="Waiting on parts">Status: Waiting on parts</option>
+          <option value="Ready for pickup">Status: Ready for pickup</option>
+          <option value="Paid">Status: Paid</option>
+        </select>
+      </div>
+    </div>
+    <div class="lines" id="lines"></div>
+    <div class="t-foot">
+      <div class="trow"><span>Parts</span><b id="partsSub">$0.00</b></div>
+      <div class="trow"><span>Labor (not taxed)</span><b id="laborSub">$0.00</b></div>
+      <div class="trow"><span>Discount on parts</span><span><select id="discPct"><option value="0">None</option><option value="5">5%</option><option value="10">10%</option><option value="15">15%</option><option value="20">20%</option></select></span></div>
+      <div class="trow" id="discRow" style="display:none"><span id="discLabel">Less discount</span><b id="discAmt">-$0.00</b></div>
+      <div class="trow" id="supRow" style="display:none"><span id="supLabel">Shop supplies</span><b id="supAmt">$0.00</b></div>
+      <div class="trow"><span>Tax rate</span><span><input id="taxRate" type="number" step="0.01" min="0" inputmode="decimal"> %</span></div>
+      <div class="trow"><span>Sales tax</span><b id="tax">$0.00</b></div>
+      <div class="grand"><span>Total due</span><b id="total">$0.00</b></div>
+      <div class="shop">
+        <div class="sh">Shop only &middot; never on the customer's copy</div>
+        <div class="trow"><span>Your parts cost</span><b id="cTot">$0.00</b></div>
+        <div class="trow"><span>Profit on this job</span><b id="pTot">$0.00</b></div>
+        <div class="trow"><span>Margin on parts</span><b id="pmTot">&mdash;</b></div>
+        <div class="miss" id="cMiss"></div>
+      </div>
+      <div class="acts">
+        <button class="ready" id="readyBtn">Bike ready &mdash; text customer</button>
+        <button id="addCustom">+ Custom line</button>
+        <button id="quoteBtn">Quote</button>
+        <button class="primary" id="printBtn">Print / PDF</button>
+        <button id="saveBtn">Save</button>
+        <button id="ticketsBtn">Tickets</button>
+        <button id="newBtn">New</button>
+      </div>
+    </div>
+  </aside>
+</div>
+<button class="fab" id="fab"><span id="fabCount">Ticket &mdash; 0 lines</span><span id="fabTotal">$0.00</span></button>
+<div class="toast" id="toast"></div>
+
+<!-- Send sheet (quote or bike-ready text) -->
+<div class="sheet" id="sendSheet">
+  <div class="panel">
+    <h3 id="sendTitle">Send</h3>
+    <div class="sub" id="sendTo"></div>
+    <textarea id="sendText" spellcheck="false"></textarea>
+    <div class="btns">
+      <button class="primary" id="sSms">Text it</button>
+      <button id="sCopy">Copy</button>
+      <button id="sShare">Share&hellip;</button>
+      <button id="sClose">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Saved tickets -->
+<div class="sheet" id="tkSheet">
+  <div class="panel">
+    <h3>Tickets</h3>
+    <div class="sub" id="tkSub"></div>
+    <div id="tkList"></div>
+    <div class="btns"><button class="full" id="tkClose">Close</button></div>
+  </div>
+</div>
+
+<!-- Settings -->
+<div class="sheet" id="setSheet">
+  <div class="panel">
+    <h3>Settings</h3>
+    <div class="sub">Saved on this iPad. Nothing here is printed except the shop name, phone and address.</div>
+    <div class="form">
+      <h4>Shop</h4>
+      <label>Shop name<input id="sName"></label>
+      <div class="row" style="grid-template-columns:1fr 1.6fr">
+        <label>Phone<input id="sPhone" inputmode="tel"></label>
+        <label>Address<input id="sAddr"></label>
+      </div>
+      <label>Sales tax rate %<input id="sTax" type="number" step="0.01" inputmode="decimal"></label>
+      <h4>Labor menu</h4>
+      <label>One per line: name | price<textarea id="sLabor" spellcheck="false"></textarea></label>
+      <h4>Shop supplies fee</h4>
+      <label class="chk"><input type="checkbox" id="sSupOn"> Add a shop supplies fee</label>
+      <div class="row">
+        <label>% of labor<input id="sSupPct" type="number" step="0.5" inputmode="decimal"></label>
+        <label>Max $<input id="sSupCap" type="number" step="1" inputmode="decimal"></label>
+        <label class="chk" style="align-self:end"><input type="checkbox" id="sSupTax"> Taxed</label>
+      </div>
+      <h4>Pickup message</h4>
+      <label>Added to the bike-ready text<textarea id="sPolicy" style="min-height:70px;font-family:inherit"></textarea></label>
+      <h4>WPS connection</h4>
+      <div class="sub">The middleman's address and the shop password, from the setup steps. The WPS key itself stays on the middleman, never on this iPad.</div>
+      <label>Middleman address<input id="sWorker" placeholder="https://taplog-shop.yourname.workers.dev" autocapitalize="off" spellcheck="false"></label>
+      <label>Shop password<input id="sKey" type="password" autocapitalize="off" spellcheck="false"></label>
+      <div class="status" id="sStatus" style="display:none"></div>
+    </div>
+    <div class="btns">
+      <button id="sTest">Test connection</button>
+      <button class="primary" id="sSave">Save</button>
+      <button class="full" id="sCancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const money = n => '$' + (Math.round((n || 0) * 100) / 100).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const mem = {};
+const store = {
+  get(k){ try{ return localStorage.getItem(k); }catch(e){ return k in mem ? mem[k] : null; } },
+  set(k,v){ try{ localStorage.setItem(k,v); }catch(e){ mem[k]=v; } }
+};
+const CFG = window.TAPLOG || {shop:{}};
+
+/* ---------------- Settings ---------------- */
+const DEFAULT_LABOR = [
+  'Tire mount & balance (per wheel) | 35',
+  'Tube install (per wheel) | 25',
+  'Oil & filter change | 45',
+  'Brake pads (per caliper) | 45',
+  'Brake fluid flush | 60',
+  'Chain & sprockets install | 90',
+  'Battery install & test | 20',
+  'Valve adjustment | 180',
+  'Carb clean | 150',
+  'Diagnosis (per hour) | 95',
+  'Shop labor (per hour) | 95'
+].join('\n');
+function loadSet(){
+  let s = {};
+  try{ s = JSON.parse(store.get('tlg_settings') || '{}'); }catch(e){}
+  return Object.assign({
+    name: CFG.shop.name || 'Your Shop', phone: CFG.shop.phone || '', addr: CFG.shop.address || '',
+    tax: 6.25, labor: DEFAULT_LABOR, supOn: false, supPct: 5, supCap: 25, supTax: false,
+    policy: 'Please pick up within 48 hours. After that, storage is $75 per day unless arranged ahead of time.',
+    worker: CFG.worker || '', key: ''
+  }, s);
+}
+let SET = loadSet();
+const saveSet = () => store.set('tlg_settings', JSON.stringify(SET));
+const workerUrl = () => (SET.worker || '').trim().replace(/\/+$/, '');
+let LIVE = false;
+
+function laborMenu(){
+  return SET.labor.split('\n').map(l => l.split('|')).filter(p => p[0] && p[0].trim())
+    .map(p => ({d: p[0].trim(), p: parseFloat(String(p[1] || '0').replace(/[^0-9.]/g, '')) || 0}));
+}
+
+/* ---------------- Middleman calls ---------------- */
+async function api(path, opts){
+  const r = await fetch(workerUrl() + path, Object.assign({
+    headers: {'X-Shop-Key': SET.key || '', 'Content-Type': 'application/json'}
+  }, opts || {}));
+  let body = null; try{ body = await r.json(); }catch(e){}
+  if(!r.ok) throw new Error((body && body.error) || ('Error ' + r.status));
+  return body;
+}
+
+/* ---------------- Sample parts (demo mode only) ---------------- */
+const SAMPLE = [
+  ['SAMPLE-T21','Front tire 80/100-21 (sample)',95,'Tires'],
+  ['SAMPLE-T19','Rear tire 110/90-19 (sample)',109,'Tires'],
+  ['SAMPLE-T18','Rear tire 110/100-18 (sample)',112,'Tires'],
+  ['SAMPLE-TU21','Heavy-duty tube 21" (sample)',24,'Tubes'],
+  ['SAMPLE-TU19','Heavy-duty tube 19/18" (sample)',26,'Tubes'],
+  ['SAMPLE-BPF','Brake pads, front (sample)',38,'Brake pads'],
+  ['SAMPLE-BPR','Brake pads, rear (sample)',36,'Brake pads'],
+  ['SAMPLE-CH520','520 O-ring chain 120 links (sample)',96,'Chain'],
+  ['SAMPLE-SPR50','Rear sprocket 50T (sample)',58,'Sprockets'],
+  ['SAMPLE-SPF13','Front sprocket 13T (sample)',22,'Sprockets'],
+  ['SAMPLE-BAT','AGM battery (sample)',89,'Battery'],
+  ['SAMPLE-OF','Oil filter (sample)',11,'Oil filter'],
+  ['SAMPLE-OIL','4-stroke oil 10W-40, 1 qt (sample)',13,'Oil'],
+  ['SAMPLE-AF','Air filter (sample)',29,'Air filter'],
+  ['SAMPLE-PLUG','Spark plug (sample)',12,'Spark plug'],
+  ['SAMPLE-GRIP','Grips (sample)',18,'Grips'],
+  ['SAMPLE-LEV','Clutch lever (sample)',24,'Levers']
+].map((r,i) => ({id: 'S' + i, sku: r[0], name: r[1], retail: r[2], dealer: Math.round(r[2] * 0.62 * 100) / 100,
+                 stock: {t: [12,0,25,6,3][i % 5], a: [4,0,9,2,0][i % 5]}, cat: r[3]}));
+
+/* ---------------- Bike picker (live) ---------------- */
+let vehicle = null; // {vehicle, year, make, model}
+function fillSel(id, rows, chosen, blank){
+  $(id).innerHTML = (blank ? '<option value="">' + blank + '</option>' : '') +
+    rows.map(r => '<option value="' + esc(r[0]) + '"' + (String(r[0]) === String(chosen) ? ' selected' : '') + '>' + esc(r[1]) + '</option>').join('');
+}
+async function loadMakes(){
+  fillSel('selMake', [], '', 'Loading…'); fillSel('selModel', [], '', '—'); fillSel('selYear', [], '', '—');
+  const makes = await api('/api/makes');
+  const pref = ['Honda','Yamaha','Kawasaki','Suzuki','KTM','Husqvarna','GASGAS','Harley-Davidson','Polaris','Can-Am','Beta','Sherco','Triumph','BMW','Ducati'];
+  const top = pref.map(n => makes.find(m => m.name.toLowerCase() === n.toLowerCase())).filter(Boolean);
+  const rest = makes.filter(m => !top.includes(m));
+  $('selMake').innerHTML = '<option value="">Pick make</option>' +
+    '<optgroup label="Common">' + top.map(m => '<option value="' + m.id + '">' + esc(m.name) + '</option>').join('') + '</optgroup>' +
+    '<optgroup label="All makes">' + rest.map(m => '<option value="' + m.id + '">' + esc(m.name) + '</option>').join('') + '</optgroup>';
+}
+$('selMake').addEventListener('change', async () => {
+  vehicle = null; fillSel('selModel', [], '', 'Loading…'); fillSel('selYear', [], '', '—');
+  if(!$('selMake').value){ fillSel('selModel', [], '', '—'); return; }
+  try{
+    const models = await api('/api/models?make=' + $('selMake').value);
+    fillSel('selModel', models.map(m => [m.id, m.name]), '', 'Pick model');
+  }catch(e){ toast(e.message); fillSel('selModel', [], '', '—'); }
+  renderList();
+});
+$('selModel').addEventListener('change', async () => {
+  vehicle = null; fillSel('selYear', [], '', 'Loading…');
+  if(!$('selModel').value){ fillSel('selYear', [], '', '—'); return; }
+  try{
+    const years = await api('/api/years?model=' + $('selModel').value);
+    fillSel('selYear', years.map(y => [y.vehicle, y.year]), '', 'Year');
+  }catch(e){ toast(e.message); fillSel('selYear', [], '', '—'); }
+  renderList();
+});
+$('selYear').addEventListener('change', () => {
+  const v = $('selYear').value;
+  if(!v){ vehicle = null; renderList(); return; }
+  const mk = $('selMake').selectedOptions[0].textContent, md = $('selModel').selectedOptions[0].textContent,
+        yr = $('selYear').selectedOptions[0].textContent;
+  vehicle = {vehicle: v, year: yr, make: mk, model: md, label: yr + ' ' + mk + ' ' + md};
+  if(!$('cBike').value.trim() || $('cBike').dataset.auto === '1'){ $('cBike').value = vehicle.label; $('cBike').dataset.auto = '1'; }
+  renderList();
+});
+$('cBike').addEventListener('input', () => { $('cBike').dataset.auto = '0'; });
+
+/* ---------------- Search ---------------- */
+let scope = 'fit', results = [], searchSeq = 0, tSearch;
+const CHIPS = ['Front tire','Rear tire','Tube','Brake pads','Chain','Sprocket','Battery','Oil filter','Air filter','Spark plug','Grips','Levers','Bearings','Seals'];
+$('chips').innerHTML = CHIPS.map(c => '<button class="chip" data-q="' + esc(c.toLowerCase()) + '">' + esc(c) + '</button>').join('');
+$('chips').addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if(!b) return;
+  let q = b.dataset.q;
+  if(LIVE){ q = q.replace('front tire','tire').replace('rear tire','tire').replace('sprocket','sprocket'); }
+  $('q').value = q; renderList();
+});
+$('scope').addEventListener('click', e => {
+  const b = e.target.closest('button'); if(!b) return;
+  scope = b.dataset.s;
+  [...$('scope').children].forEach(x => x.setAttribute('aria-pressed', x === b));
+  $('q').placeholder = scope === 'fit' ? 'Search parts that fit…' : 'Part # or words, any WPS part…';
+  renderList();
+});
+$('q').addEventListener('input', () => { clearTimeout(tSearch); tSearch = setTimeout(renderList, 280); });
+$('clearQ').addEventListener('click', () => { $('q').value = ''; renderList(); $('q').focus(); });
+$('q').addEventListener('keydown', e => {
+  if(e.key !== 'Enter') return;
+  e.preventDefault(); clearTimeout(tSearch);
+  // Scanner or typed part number: add straight away if it's a single exact hit
+  const raw = $('q').value.trim(); if(!raw) return;
+  renderList().then(() => {
+    const exact = results.find(p => p.sku.toLowerCase() === raw.toLowerCase());
+    if(exact){ addPart(exact); $('q').value = ''; renderList(); }
+    else if(results.length === 1){ addPart(results[0]); $('q').value = ''; renderList(); }
+  });
+});
+
+function stockTag(s){
+  if(!s) return '';
+  if(s.t <= 0) return '<span class="stk out">Out at WPS</span>';
+  const plus = n => n >= 25 ? '25+' : n;
+  return '<span class="stk ' + (s.a > 0 ? 'in' : 'lo') + '">' +
+    (s.a > 0 ? 'Ashley ' + plus(s.a) + ' · ' : 'Not in Ashley · ') + 'WPS ' + plus(s.t) + '</span>';
+}
+function drawList(rows, label, extra){
+  $('partsLabel').textContent = label;
+  results = rows;
+  if(!rows.length){ $('list').innerHTML = extra || '<div class="empty"><b>No parts match</b>Try fewer words, or switch to All WPS.</div>'; return; }
+  $('list').innerHTML = rows.map((p,i) =>
+    '<button class="part" data-i="' + i + '">' +
+      '<span class="pn">' + esc(p.sku) + '</span>' +
+      '<span class="d">' + esc(p.name) + '<small>' + stockTag(p.stock) + (p.status === 'CLO' ? 'Closeout' : '') + '</small></span>' +
+      '<span class="pr">' + money(p.retail) + '<small>retail</small></span>' +
+    '</button>').join('') + (extra || '');
+}
+async function renderList(){
+  const q = $('q').value.trim();
+  const my = ++searchSeq;
+  if(!LIVE){
+    const words = q.toLowerCase().split(/\s+/).filter(Boolean);
+    const rows = SAMPLE.filter(p => words.every(w => (p.sku + ' ' + p.name + ' ' + p.cat).toLowerCase().includes(w)));
+    drawList(rows, q ? 'Sample parts — ' + rows.length + ' match' + (rows.length === 1 ? '' : 'es') : 'Sample parts');
+    return;
+  }
+  if(scope === 'fit'){
+    if(!vehicle){
+      drawList([], 'Parts', '<div class="empty"><b>Pick the bike first</b>Make, model and year at the top. Then every search shows only WPS parts listed for that bike. For tires, oil or a part number, use All WPS.</div>');
+      return;
+    }
+    if(!q){
+      drawList([], 'Parts for ' + vehicle.label, '<div class="empty"><b>Search what the job needs</b>Tap a button above or type a word like pads, chain, filter.</div>');
+      return;
+    }
+    $('list').innerHTML = '<div class="spin">Searching WPS…</div>';
+    try{
+      const r = await api('/api/parts?vehicle=' + vehicle.vehicle + '&q=' + encodeURIComponent(q));
+      if(my !== searchSeq) return;
+      drawList(r.parts, r.matches + ' of ' + r.total + ' fitting parts' + (r.matches > r.parts.length ? ' — top ' + r.parts.length + ' shown, add a word to narrow' : ''));
+    }catch(e){ if(my === searchSeq) drawList([], 'Parts', '<div class="empty"><b>WPS didn’t answer</b>' + esc(e.message) + '</div>'); }
+  } else {
+    if(q.length < 2){ drawList([], 'Any WPS part', '<div class="empty"><b>Type a part number or words</b>Good for tires, oil, chemicals and anything that isn’t listed by bike. A scanner works here too.</div>'); return; }
+    $('list').innerHTML = '<div class="spin">Searching WPS…</div>';
+    try{
+      const r = await api('/api/search?q=' + encodeURIComponent(q));
+      if(my !== searchSeq) return;
+      drawList(r.parts, 'WPS — ' + r.parts.length + ' found');
+    }catch(e){ if(my === searchSeq) drawList([], 'Any WPS part', '<div class="empty"><b>WPS didn’t answer</b>' + esc(e.message) + '</div>'); }
+  }
+}
+$('list').addEventListener('click', e => {
+  const b = e.target.closest('.part'); if(b) addPart(results[+b.dataset.i]);
+});
+
+/* ---------------- Ticket ---------------- */
+let T = blankTicket();
+function blankTicket(){ return {id: null, no: null, lines: []}; }
+
+function renderLabor(){
+  $('laborList').innerHTML = laborMenu().map((l,i) =>
+    '<button class="lab" data-i="' + i + '"><b>' + esc(l.d) + '</b><span>' + money(l.p) + '</span></button>').join('');
+}
+$('laborList').addEventListener('click', e => {
+  const b = e.target.closest('.lab'); if(!b) return;
+  const l = laborMenu()[+b.dataset.i];
+  const ex = T.lines.find(x => x.labor && x.d === l.d && x.ovr === '');
+  if(ex) ex.qty++;
+  else T.lines.push({sku: '', d: l.d, price: l.p, qty: 1, ovr: '', tax: false, labor: true, cost: 0, fresh: true});
+  toast(l.d + ' added'); render();
+});
+
+function addPart(p){
+  if(!p) return;
+  const ex = T.lines.find(l => l.sku === p.sku && !l.labor);
+  if(ex){ ex.qty++; toast(p.sku + ' × ' + ex.qty); render(); return; }
+  const line = {sku: p.sku, wid: p.id, d: p.name, price: p.retail || 0, qty: 1, ovr: '', tax: true, labor: false,
+                cost: p.dealer != null ? p.dealer : null, costSrc: p.dealer != null ? 'WPS standard dealer price' : '', fresh: true};
+  T.lines.push(line);
+  toast((p.name.length > 34 ? p.sku : p.name) + ' added');
+  render();
+  // Ask WPS for this shop's own price (their discounts) and use it if there is one
+  if(LIVE && p.id){
+    api('/api/cost/' + p.id).then(r => {
+      if(r && r.cost != null){ line.cost = r.cost; line.costSrc = 'your WPS price'; render(); }
+    }).catch(() => {});
+  }
+}
+const unitSell = l => (l.ovr === '' || l.ovr == null) ? l.price : (parseFloat(l.ovr) || 0);
+const lineTotal = l => unitSell(l) * l.qty;
+const pctTxt = n => isFinite(n) ? (Math.round(n * 10) / 10).toFixed(1) + '%' : '—';
+
+function calc(){
+  const parts = T.lines.filter(l => !l.labor), labor = T.lines.filter(l => l.labor);
+  const partsSub = parts.reduce((s,l) => s + lineTotal(l), 0);
+  const laborSub = labor.reduce((s,l) => s + lineTotal(l), 0);
+  const pct = parseFloat($('discPct').value) || 0;
+  const disc = partsSub * pct / 100;
+  const supplies = SET.supOn ? Math.min(laborSub * (parseFloat(SET.supPct) || 0) / 100, parseFloat(SET.supCap) || Infinity) : 0;
+  const rate = parseFloat($('taxRate').value) || 0;
+  // Tax: taxed lines (parts by default) after the parts discount, plus supplies if the shop taxes them
+  const taxedParts = parts.filter(l => l.tax).reduce((s,l) => s + lineTotal(l), 0);
+  const taxedLabor = labor.filter(l => l.tax).reduce((s,l) => s + lineTotal(l), 0);
+  const taxable = Math.max(0, taxedParts * (1 - pct / 100) + taxedLabor + (SET.supTax ? supplies : 0));
+  const tax = Math.round(taxable * rate) / 100;
+  const total = partsSub + laborSub - disc + supplies + tax;
+  return {partsSub, laborSub, pct, disc, supplies, rate, tax, total};
+}
+function totals(){
+  const c = calc();
+  $('partsSub').textContent = money(c.partsSub);
+  $('laborSub').textContent = money(c.laborSub);
+  $('discRow').style.display = c.disc > 0 ? '' : 'none';
+  $('discLabel').textContent = 'Less ' + c.pct + '% on parts';
+  $('discAmt').textContent = '-' + money(c.disc);
+  $('supRow').style.display = SET.supOn && c.supplies > 0 ? '' : 'none';
+  $('supLabel').textContent = 'Shop supplies' + (SET.supTax ? '' : ' (not taxed)');
+  $('supAmt').textContent = money(c.supplies);
+  $('tax').textContent = money(c.tax);
+  $('total').textContent = money(c.total);
+  $('fabCount').textContent = 'Ticket — ' + T.lines.length + (T.lines.length === 1 ? ' line' : ' lines');
+  $('fabTotal').textContent = money(c.total);
+
+  // Shop-only numbers. Parts with no known cost are left out so they can't fake a good margin.
+  let pCost = 0, pRev = 0, missing = 0;
+  T.lines.filter(l => !l.labor).forEach(l => {
+    if(l.cost == null || l.cost === ''){ missing++; return; }
+    pCost += parseFloat(l.cost) * l.qty;
+    pRev += lineTotal(l) * (1 - c.pct / 100);
+  });
+  const profit = (pRev - pCost) + c.laborSub + c.supplies;
+  $('cTot').textContent = money(pCost);
+  $('pTot').textContent = money(profit); $('pTot').className = profit < 0 ? 'neg' : '';
+  $('pmTot').textContent = pRev ? pctTxt((pRev - pCost) / pRev * 100) : '—';
+  $('pmTot').className = pRev - pCost < 0 ? 'neg' : '';
+  $('cMiss').textContent = missing ? missing + (missing === 1 ? ' part has' : ' parts have') + ' no cost yet and ' + (missing === 1 ? 'is' : 'are') + ' left out. Type it on the line.' : '';
+  return c;
+}
+function lineMg(l){
+  if(l.labor) return {t: 'labor', cls: 'mg none'};
+  if(l.cost == null || l.cost === '') return {t: 'no cost yet', cls: 'mg none'};
+  const s = unitSell(l), u = parseFloat(l.cost);
+  if(!s) return {t: 'loss ' + money(u * l.qty), cls: 'mg neg'};
+  const m = (s - u) / s * 100;
+  return {t: 'margin ' + pctTxt(m), cls: 'mg' + (m < 0 ? ' neg' : '')};
+}
+function render(){
+  if(!T.lines.length){
+    $('lines').innerHTML = '<div class="blank"><b>Nothing on the ticket</b>Tap labor or a part to start. Everything can be changed once it lands here.</div>';
+  } else {
+    $('lines').innerHTML = T.lines.map((l,i) => {
+      const mg = lineMg(l);
+      return '<div class="line' + (l.fresh ? ' new' : '') + '">' +
+        '<div class="info">' + (l.sku ? '<div class="lpn">' + esc(l.sku) + '</div>' : '<div class="lpn">' + (l.labor ? 'LABOR' : 'CUSTOM') + '</div>') +
+          '<div class="ld">' + esc(l.d) + '</div></div>' +
+        '<div class="ctl"><div class="qty"><button data-a="dec" data-i="' + i + '">&minus;</button><span>' + l.qty + '</span>' +
+          '<button data-a="inc" data-i="' + i + '">+</button></div>' +
+          '<div class="amt">' + money(lineTotal(l)) + '</div>' +
+          '<button class="del" data-a="del" data-i="' + i + '" aria-label="Remove">&times;</button></div>' +
+        '<div class="ovr"><span>Each ' + money(l.price) + ' &rarr; charge</span>' +
+          '<input type="number" step="0.01" inputmode="decimal" placeholder="' + l.price.toFixed(2) + '" value="' + esc(l.ovr) + '" data-a="ovr" data-i="' + i + '">' +
+          '<button class="taxtog ' + (l.tax ? 'on' : '') + '" data-a="tax" data-i="' + i + '">' + (l.tax ? 'Taxed' : 'No tax') + '</button></div>' +
+        (l.labor ? '' :
+        '<div class="cost"><span>Your cost each</span>' +
+          '<input type="number" step="0.01" inputmode="decimal" data-a="cost" data-i="' + i + '" value="' + (l.cost == null ? '' : esc(l.cost)) + '" placeholder="?">' +
+          (l.costSrc ? '<span>' + esc(l.costSrc) + '</span>' : '') +
+          '<span id="mg' + i + '" class="' + mg.cls + '">' + mg.t + '</span></div>') +
+      '</div>';
+    }).join('');
+    T.lines.forEach(l => l.fresh = false);
+  }
+  $('invNo').textContent = T.no || 'New';
+  totals();
+}
+$('lines').addEventListener('click', e => {
+  const b = e.target.closest('[data-a]'); if(!b || b.tagName === 'INPUT') return;
+  const i = +b.dataset.i, a = b.dataset.a, l = T.lines[i];
+  if(a === 'inc') l.qty++;
+  if(a === 'dec'){ l.qty--; if(l.qty < 1) T.lines.splice(i,1); }
+  if(a === 'del') T.lines.splice(i,1);
+  if(a === 'tax') l.tax = !l.tax;
+  render();
+});
+$('lines').addEventListener('input', e => {
+  const el = e.target.closest('input[data-a]'); if(!el) return;
+  const i = +el.dataset.i, l = T.lines[i];
+  if(el.dataset.a === 'ovr') l.ovr = el.value;
+  if(el.dataset.a === 'cost'){ l.cost = el.value === '' ? null : el.value; l.costSrc = el.value === '' ? '' : 'typed'; }
+  const r = lineMg(l), m = $('mg' + i); if(m){ m.textContent = r.t; m.className = r.cls; }
+  // keep the line total current without redrawing (keeps the keyboard up)
+  const amt = el.closest('.line').querySelector('.amt'); if(amt) amt.textContent = money(lineTotal(l));
+  totals();
+});
+$('taxRate').addEventListener('input', totals);
+$('discPct').addEventListener('change', totals);
+
+$('addCustom').addEventListener('click', () => {
+  const d = prompt('Description (sublet, freight, used part…)'); if(!d) return;
+  const p = parseFloat(prompt('Amount each', '0')); if(isNaN(p)) return;
+  const isLabor = !confirm('Is this a part or item that gets sales tax?\n\nOK = part, taxed   ·   Cancel = labor, no tax');
+  let cost = null;
+  if(!isLabor){ const c = prompt('Your cost each (shop only). Leave blank if you don\'t know.', ''); if(c) cost = parseFloat(c) || 0; }
+  T.lines.push({sku: '', d, price: p, qty: 1, ovr: '', tax: !isLabor, labor: isLabor, cost: isLabor ? 0 : cost, costSrc: cost != null ? 'typed' : '', fresh: true});
+  render();
+});
+$('newBtn').addEventListener('click', () => {
+  if(T.lines.length && !T.id && !confirm('Start a new ticket? This one hasn’t been saved.')) return;
+  T = blankTicket();
+  ['cName','cPhone','cBike','cMiles','cTag','cNotes'].forEach(id => $(id).value = '');
+  $('cBike').dataset.auto = '1'; $('cStatus').value = 'Open'; $('discPct').value = '0';
+  if(vehicle) $('cBike').value = vehicle.label;
+  render(); toast('New ticket');
+});
+$('fab').addEventListener('click', () => $('ticket').classList.add('open'));
+$('closeT').addEventListener('click', () => $('ticket').classList.remove('open'));
+
+/* ---------------- Save / reopen ---------------- */
+function rid(n){
+  const a = 'abcdefghjkmnpqrstuvwxyz23456789', b = crypto.getRandomValues(new Uint8Array(n));
+  return Array.from(b, x => a[x % a.length]).join('');
+}
+function ticketData(){
+  const c = calc();
+  return {
+    id: T.id || rid(10), no: T.no || null,
+    shop: {name: SET.name, phone: SET.phone, address: SET.addr},
+    customer: {name: $('cName').value.trim(), phone: $('cPhone').value.trim()},
+    bike: $('cBike').value.trim(), miles: $('cMiles').value.trim(), tag: $('cTag').value.trim(),
+    notes: $('cNotes').value.trim(), status: $('cStatus').value,
+    lines: T.lines.map(l => ({sku: l.sku, wid: l.wid || null, d: l.d, qty: l.qty, price: l.price, ovr: l.ovr,
+      unit: unitSell(l), amt: lineTotal(l), tax: l.tax, labor: l.labor, cost: l.cost, costSrc: l.costSrc || ''})),
+    totals: {parts: c.partsSub, labor: c.laborSub, discPct: c.pct, disc: c.disc, supplies: c.supplies,
+             suppliesTaxed: !!SET.supTax, taxRate: c.rate, tax: c.tax, total: c.total},
+    policy: SET.policy, vehicle: vehicle || null
+  };
+}
+function localTickets(){ try{ return JSON.parse(store.get('tlg_tickets') || '[]'); }catch(e){ return []; } }
+async function saveTicket(quiet){
+  if(!T.lines.length){ toast('Add something to the ticket first'); return null; }
+  const t = ticketData();
+  if(LIVE){
+    try{
+      const r = await api('/api/tickets', {method: 'POST', body: JSON.stringify(t)});
+      T.id = r.id; T.no = r.no;
+    }catch(e){ toast('Not saved: ' + e.message); return null; }
+  } else {
+    if(!t.no){ const n = parseInt(store.get('tlg_seq') || '1000', 10) + 1; store.set('tlg_seq', String(n)); t.no = 'INV-' + n; }
+    t.saved = new Date().toISOString();
+    const list = localTickets().filter(x => x.id !== t.id); list.unshift(t);
+    store.set('tlg_tickets', JSON.stringify(list.slice(0, 100)));
+    T.id = t.id; T.no = t.no;
+  }
+  render();
+  if(!quiet) toast(T.no + ' saved' + (t.tag ? ' to tag ' + t.tag : ''));
+  return Object.assign(t, {id: T.id, no: T.no});
+}
+$('saveBtn').addEventListener('click', () => saveTicket(false));
+
+function openTicket(t){
+  T = {id: t.id, no: t.no, lines: (t.lines || []).map(l => Object.assign({}, l, {ovr: l.ovr == null ? '' : l.ovr}))};
+  $('cName').value = (t.customer && t.customer.name) || ''; $('cPhone').value = (t.customer && t.customer.phone) || '';
+  $('cBike').value = t.bike || ''; $('cBike').dataset.auto = '0';
+  $('cMiles').value = t.miles || ''; $('cTag').value = t.tag || ''; $('cNotes').value = t.notes || '';
+  $('cStatus').value = t.status || 'Open';
+  $('discPct').value = String((t.totals && t.totals.discPct) || 0);
+  if(t.totals && t.totals.taxRate != null) $('taxRate').value = t.totals.taxRate;
+  render(); $('tkSheet').classList.remove('open'); toast(t.no + ' opened');
+}
+$('ticketsBtn').addEventListener('click', async () => {
+  $('tkSheet').classList.add('open');
+  $('tkList').innerHTML = '<div class="spin">Loading…</div>';
+  $('tkSub').textContent = LIVE ? 'Saved tickets for the shop, newest first.' : 'Sample mode: tickets are saved on this iPad only.';
+  let list = [];
+  try{ list = LIVE ? await api('/api/tickets') : localTickets().map(t => ({id: t.id, no: t.no, saved: t.saved, name: t.customer.name, bike: t.bike, total: t.totals.total, status: t.status})); }
+  catch(e){ $('tkList').innerHTML = '<div class="status bad">' + esc(e.message) + '</div>'; return; }
+  $('tkList').innerHTML = list.length ? list.map(t =>
+    '<button class="tk" data-id="' + esc(t.id) + '"><span>' + esc(t.no) + ' &middot; ' + esc(t.name || 'No name') +
+      '<small>' + esc(t.bike || '') + ' &middot; ' + esc(t.status || '') + ' &middot; ' + new Date(t.saved).toLocaleDateString() + '</small></span>' +
+      '<b>' + money(t.total) + '</b></button>').join('') : '<div class="empty"><b>No saved tickets yet</b></div>';
+});
+$('tkList').addEventListener('click', async e => {
+  const b = e.target.closest('.tk'); if(!b) return;
+  try{
+    const t = LIVE ? await api('/api/tickets/' + b.dataset.id) : localTickets().find(x => x.id === b.dataset.id);
+    if(t) openTicket(t);
+  }catch(err){ toast(err.message); }
+});
+$('tkClose').addEventListener('click', () => $('tkSheet').classList.remove('open'));
+
+/* ---------------- Customer link + texts ---------------- */
+function b64url(s){ return btoa(unescape(encodeURIComponent(s))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+function invoiceLink(t){
+  const base = location.href.replace(/[^/]*([?#].*)?$/, '') + 'invoice.html';
+  if(LIVE) return base + '?t=' + t.id + (CFG.worker && workerUrl() === CFG.worker.replace(/\/+$/,'') ? '' : '&w=' + encodeURIComponent(workerUrl()));
+  // Sample mode: the whole customer copy rides inside the link, so it still opens on the customer's phone
+  const c = {no: t.no, saved: t.saved || new Date().toISOString(), shop: t.shop, customer: {name: t.customer.name}, bike: t.bike,
+             notes: t.notes, status: t.status, lines: t.lines.map(l => [l.sku, l.d, l.qty, l.unit, l.amt, l.labor ? 1 : 0]),
+             totals: t.totals, policy: t.policy};
+  return base + '#d=' + b64url(JSON.stringify(c));
+}
+const first = n => (n || '').trim().split(/\s+/)[0] || '';
+function phoneDigits(){ const d = $('cPhone').value.replace(/[^0-9+]/g, ''); return d.length >= 7 ? d : ''; }
+function openSend(title, text){
+  $('sendTitle').textContent = title; $('sendText').value = text;
+  $('sendTo').textContent = phoneDigits() ? 'Text goes to ' + $('cPhone').value.trim() : 'Tip: put the customer’s mobile number on the ticket to fill it in.';
+  $('sShare').style.display = navigator.share ? '' : 'none';
+  $('sendSheet').classList.add('open');
+}
+$('readyBtn').addEventListener('click', async () => {
+  if(!T.lines.length){ toast('Add the work to the ticket first'); return; }
+  $('cStatus').value = 'Ready for pickup';
+  const t = await saveTicket(true); if(!t) return;
+  const bike = t.bike ? 'your ' + t.bike : 'your bike';
+  const msg = 'Hi ' + (first(t.customer.name) || 'there') + ', ' + bike + ' is ready for pickup at ' + SET.name + '. ' +
+    'Total: ' + money(t.totals.total) + '.\n\nYour invoice: ' + invoiceLink(t) +
+    (SET.policy ? '\n\n' + SET.policy : '') + (SET.phone ? '\n\nQuestions? ' + SET.phone : '');
+  openSend('Bike ready', msg);
+});
+$('quoteBtn').addEventListener('click', () => {
+  if(!T.lines.length){ toast('Add parts first'); return; }
+  const c = calc(), out = [];
+  out.push(SET.name.toUpperCase() + ' — QUOTE');
+  out.push(new Date().toLocaleDateString('en-US', {month: 'long', day: 'numeric', year: 'numeric'}));
+  if($('cName').value.trim()) out.push('For: ' + $('cName').value.trim());
+  if($('cBike').value.trim()) out.push('Bike: ' + $('cBike').value.trim());
+  out.push('');
+  T.lines.forEach(l => out.push('- ' + l.d + (l.qty > 1 ? ' (' + l.qty + ' × ' + money(unitSell(l)) + ')' : '') + ': ' + money(lineTotal(l))));
+  out.push('');
+  if(c.disc) out.push('Parts discount: -' + money(c.disc));
+  if(c.supplies) out.push('Shop supplies: ' + money(c.supplies));
+  out.push('Sales tax: ' + money(c.tax));
+  out.push('QUOTE TOTAL: ' + money(c.total));
+  out.push('');
+  out.push('Reply YES to approve and we’ll get started.');
+  openSend('Send quote', out.join('\n'));
+});
+$('sSms').addEventListener('click', () => { location.href = 'sms:' + phoneDigits() + '&body=' + encodeURIComponent($('sendText').value); });
+$('sCopy').addEventListener('click', () => {
+  const t = $('sendText').value;
+  (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => toast('Copied'),
+    () => { $('sendText').select(); document.execCommand('copy'); toast('Copied'); });
+});
+$('sShare').addEventListener('click', () => navigator.share({text: $('sendText').value}).catch(() => {}));
+$('sClose').addEventListener('click', () => $('sendSheet').classList.remove('open'));
+document.querySelectorAll('.sheet').forEach(s => s.addEventListener('click', e => { if(e.target === s) s.classList.remove('open'); }));
+
+/* ---------------- PDF ---------------- */
+const PDF_W = {
+  r:[278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,334,260,334,584],
+  b:[278,333,474,556,556,889,722,238,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,333,333,584,584,584,611,975,722,722,722,722,667,611,778,722,278,556,722,611,833,722,778,667,778,722,667,611,722,667,944,667,667,611,333,278,333,584,556,333,556,611,556,611,556,333,611,611,278,278,556,278,889,611,611,611,611,389,556,333,611,556,778,556,556,500,389,280,389,584]
+};
+function pdfTxt(s){
+  return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[–—−]/g, '-').replace(/[‘’]/g, "'").replace(/[“”]/g, '"')
+    .replace(/×/g, 'x').replace(/[·•]/g, '-').replace(/…/g, '...')
+    .replace(/°/g, ' deg').replace(/\s+/g, ' ').replace(/[^\x20-\x7e]/g, '');
+}
+function pdfWidth(s, bold, size){
+  const w = bold ? PDF_W.b : PDF_W.r; let t = 0;
+  for(const ch of s) t += w[ch.charCodeAt(0) - 32] || 556;
+  return t / 1000 * size;
+}
+function pdfWrap(s, maxW, bold, size){
+  const out = []; let cur = '';
+  pdfTxt(s).split(' ').forEach(word => {
+    while(pdfWidth(word, bold, size) > maxW && word.length > 1){
+      let k = word.length; while(k > 1 && pdfWidth(word.slice(0, k), bold, size) > maxW) k--;
+      if(cur){ out.push(cur); cur = ''; }
+      out.push(word.slice(0, k)); word = word.slice(k);
+    }
+    const t = cur ? cur + ' ' + word : word;
+    if(pdfWidth(t, bold, size) <= maxW) cur = t; else { if(cur) out.push(cur); cur = word; }
+  });
+  if(cur) out.push(cur);
+  return out.length ? out : [''];
+}
+function buildPdf(d){
+  const W = 612, H = 792, M = 40, R = W - M, pages = [];
+  let ops = [], y = 0;
+  const esc = s => s.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+  const text = (x, yy, s, size, bold, align, gray) => {
+    s = pdfTxt(s); const xx = align === 'r' ? x - pdfWidth(s, bold, size) : x;
+    ops.push((gray ? '0.4 g' : '0 g') + ' BT /' + (bold ? 'F2' : 'F1') + ' ' + size + ' Tf ' +
+      xx.toFixed(2) + ' ' + yy.toFixed(2) + ' Td (' + esc(s) + ') Tj ET');
+  };
+  const rule = (x1, yy, x2, wid, gray) =>
+    ops.push(gray + ' G ' + wid + ' w ' + x1.toFixed(2) + ' ' + yy.toFixed(2) + ' m ' + x2.toFixed(2) + ' ' + yy.toFixed(2) + ' l S');
+  const C = {pn: M, d: M + 92, q: 432, u: 500, a: R};
+  const tableHead = () => {
+    text(C.pn, y, 'PART #', 8, true, '', true); text(C.d, y, 'DESCRIPTION', 8, true, '', true);
+    text(C.q, y, 'QTY', 8, true, 'r', true); text(C.u, y, 'UNIT', 8, true, 'r', true); text(C.a, y, 'AMOUNT', 8, true, 'r', true);
+    y -= 7; rule(M, y, R, 0.8, 0.3); y -= 14;
+  };
+  const newPage = () => {
+    if(ops.length) pages.push(ops);
+    ops = []; y = H - M;
+    if(pages.length){ text(M, y, d.brand + ' - ' + d.title + ' ' + d.no + ' (continued)', 9, true); y -= 24; tableHead(); }
+  };
+  const room = need => { if(y - need < M + 30){ newPage(); } };
+
+  newPage();
+  text(M, y - 4, d.brand, 18, true);
+  text(R, y - 4, d.title, 18, true, 'r');
+  y -= 22;
+  text(R, y, d.no + '   ' + d.date, 10, false, 'r', true);
+  y -= 10; rule(M, y, R, 1.5, 0); y -= 22;
+
+  const half = (R - M) / 2;
+  d.cust.forEach((c, i) => {
+    const x = M + (i % 2) * half, yy = y - Math.floor(i / 2) * 26;
+    text(x, yy, c[0].toUpperCase(), 7.5, true, '', true);
+    text(x, yy - 11, pdfWrap(c[1], half - 12, false, 10)[0], 10);
+  });
+  if(d.cust.length) y -= Math.ceil(d.cust.length / 2) * 26 + 12;
+
+  tableHead();
+  let lastBike = null;
+  d.rows.forEach(r => {
+    if(r.bike && r.bike !== lastBike){
+      room(30); text(M, y, r.bike, 9, true); y -= 14; lastBike = r.bike;
+    }
+    const dl = pdfWrap(r.d, C.q - 30 - C.d, false, 9.5);
+    const pl = pdfWrap(r.pn, C.d - C.pn - 8, false, 8.5);
+    const n = Math.max(dl.length, pl.length);
+    room(n * 12 + 8);
+    pl.forEach((t, i) => text(C.pn, y - i * 12, t, 8.5, false, '', true));
+    dl.forEach((t, i) => text(C.d, y - i * 12, t, 9.5));
+    text(C.q, y, String(r.qty), 9.5, false, 'r');
+    text(C.u, y, r.unit, 9.5, false, 'r');
+    text(C.a, y, r.amt, 9.5, true, 'r');
+    y -= n * 12 + 2; rule(M, y + 4, R, 0.4, 0.8); y -= 10;
+  });
+
+  room(d.tots.length * 15 + 60);
+  y -= 6;
+  const lx = 470;
+  d.tots.forEach(t => { text(lx, y, t[0], 9.5, false, 'r', true); text(R, y, t[1], 9.5, false, 'r'); y -= 15; });
+  y -= 2; rule(330, y + 9, R, 1.5, 0); y -= 10;
+  text(lx, y, d.grand[0], 12, true, 'r'); text(R, y, d.grand[1], 14, true, 'r');
+  y -= 30;
+  d.foot.forEach(f => pdfWrap(f, R - M, false, 8.5).forEach(t => { room(14); text(M, y, t, 8.5, false, '', true); y -= 12; }));
+  pages.push(ops);
+
+  const total = pages.length;
+  if(total > 1) pages.forEach((p, i) => {
+    const s = 'Page ' + (i + 1) + ' of ' + total;
+    p.push('0.4 g BT /F1 8 Tf ' + (R - pdfWidth(s, false, 8)).toFixed(2) + ' ' + (M - 16) + ' Td (' + s + ') Tj ET');
+  });
+
+  const objs = [];
+  objs[1] = '<< /Type /Catalog /Pages 2 0 R >>';
+  objs[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';
+  objs[4] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>';
+  const kids = [];
+  pages.forEach((p, i) => {
+    const po = 5 + i * 2, co = po + 1, stream = p.join('\n');
+    kids.push(po + ' 0 R');
+    objs[po] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + W + ' ' + H + '] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ' + co + ' 0 R >>';
+    objs[co] = '<< /Length ' + stream.length + ' >>\nstream\n' + stream + '\nendstream';
+  });
+  objs[2] = '<< /Type /Pages /Kids [' + kids.join(' ') + '] /Count ' + pages.length + ' >>';
+  let out = '%PDF-1.4\n', offs = [];
+  for(let i = 1; i < objs.length; i++){ offs[i] = out.length; out += i + ' 0 obj\n' + objs[i] + '\nendobj\n'; }
+  const xref = out.length;
+  out += 'xref\n0 ' + objs.length + '\n0000000000 65535 f \n';
+  for(let i = 1; i < objs.length; i++) out += String(offs[i]).padStart(10, '0') + ' 00000 n \n';
+  out += 'trailer\n<< /Size ' + objs.length + ' /Root 1 0 R >>\nstartxref\n' + xref + '\n%%EOF';
+  return out;
+}
+
+function pdfData(){
+  const c = calc();
+  const v = id => $(id).value.trim();
+  const rows = T.lines.map(l => ({bike: '', pn: l.sku || (l.labor ? 'Labor' : ''), d: l.d, qty: l.qty, unit: money(unitSell(l)), amt: money(lineTotal(l))}));
+  const cust = [['Customer', v('cName')], ['Phone', v('cPhone')], ['Bike', v('cBike')], ['Miles / hours', v('cMiles')], ['Job notes', v('cNotes')]].filter(x => x[1]);
+  const tots = [['Parts', money(c.partsSub)], ['Labor', money(c.laborSub)]];
+  if(c.disc) tots.push(['Less ' + c.pct + '% on parts', '-' + money(c.disc)]);
+  if(c.supplies) tots.push(['Shop supplies', money(c.supplies)]);
+  tots.push(['Sales tax (' + c.rate + '%)', money(c.tax)]);
+  const foot = [[SET.name, SET.addr, SET.phone].filter(Boolean).join(' - ')];
+  if(SET.policy) foot.push(SET.policy);
+  return {brand: SET.name.toUpperCase(), title: 'INVOICE', no: T.no || 'DRAFT',
+    date: new Date().toLocaleDateString('en-US', {month: 'long', day: 'numeric', year: 'numeric'}),
+    cust, rows, tots, grand: ['Total due', money(c.total)], foot};
+}
+$('printBtn').addEventListener('click', async () => {
+  if(!T.lines.length){ toast('Add something to the ticket first'); return; }
+  await saveTicket(true);
+  const d = pdfData();
+  const who = pdfTxt($('cName').value).replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const file = new File([buildPdf(d)], d.no + (who ? '-' + who : '') + '.pdf', {type: 'application/pdf'});
+  if(navigator.canShare && navigator.canShare({files: [file]})){
+    navigator.share({files: [file]}).catch(e => { if(!e || e.name !== 'AbortError') downloadFile(file); });
+  } else downloadFile(file);
+});
+function downloadFile(file){
+  const url = URL.createObjectURL(file), a = document.createElement('a');
+  a.href = url; a.download = file.name; a.target = '_blank'; a.rel = 'noopener';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000); toast('PDF ready');
+}
+
+/* ---------------- Settings sheet ---------------- */
+function showStatus(ok, msg){ const s = $('sStatus'); s.style.display = ''; s.className = 'status ' + (ok ? 'ok' : 'bad'); s.textContent = msg; }
+$('gearBtn').addEventListener('click', () => {
+  $('sName').value = SET.name; $('sPhone').value = SET.phone; $('sAddr').value = SET.addr; $('sTax').value = SET.tax;
+  $('sLabor').value = SET.labor; $('sSupOn').checked = !!SET.supOn; $('sSupPct').value = SET.supPct; $('sSupCap').value = SET.supCap;
+  $('sSupTax').checked = !!SET.supTax; $('sPolicy').value = SET.policy; $('sWorker').value = SET.worker; $('sKey').value = SET.key;
+  $('sStatus').style.display = 'none';
+  $('setSheet').classList.add('open');
+});
+$('sCancel').addEventListener('click', () => $('setSheet').classList.remove('open'));
+$('sTest').addEventListener('click', async () => {
+  const w = $('sWorker').value.trim().replace(/\/+$/, '');
+  if(!w){ showStatus(false, 'Put in the middleman address first.'); return; }
+  showStatus(true, 'Checking…');
+  try{
+    const r = await fetch(w + '/api/check', {headers: {'X-Shop-Key': $('sKey').value}});
+    const b = await r.json().catch(() => ({}));
+    if(r.status === 401) return showStatus(false, 'Middleman found, but the shop password is wrong.');
+    if(!r.ok) return showStatus(false, b.error || ('Error ' + r.status));
+    const p = await (await fetch(w + '/api/ping')).json();
+    if(!p.wps) return showStatus(false, 'Connected, but the WPS key isn’t set on the middleman yet.');
+    if(!p.storage) return showStatus(false, 'Connected, but ticket storage isn’t hooked up yet (step 3).');
+    showStatus(true, 'Connected. Tap Save to switch to live WPS parts.');
+  }catch(e){ showStatus(false, 'Couldn’t reach that address. Check it for typos.'); }
+});
+$('sSave').addEventListener('click', async () => {
+  SET.name = $('sName').value.trim() || 'Your Shop'; SET.phone = $('sPhone').value.trim(); SET.addr = $('sAddr').value.trim();
+  SET.tax = parseFloat($('sTax').value) || 0; SET.labor = $('sLabor').value || DEFAULT_LABOR;
+  SET.supOn = $('sSupOn').checked; SET.supPct = parseFloat($('sSupPct').value) || 0; SET.supCap = parseFloat($('sSupCap').value) || 0;
+  SET.supTax = $('sSupTax').checked; SET.policy = $('sPolicy').value.trim();
+  SET.worker = $('sWorker').value.trim(); SET.key = $('sKey').value;
+  saveSet(); $('setSheet').classList.remove('open');
+  $('taxRate').value = SET.tax;
+  applyBrand(); renderLabor(); await connect(); render();
+  toast('Settings saved');
+});
+
+let tT;
+function toast(msg){
+  $('toast').textContent = msg; $('toast').classList.add('show');
+  clearTimeout(tT); tT = setTimeout(() => $('toast').classList.remove('show'), 1600);
+}
+
+/* ---------------- Start ---------------- */
+function applyBrand(){
+  $('shopName').textContent = SET.name;
+  document.title = SET.name + ' — Invoice';
+  if(CFG.shop.accent) document.documentElement.style.setProperty('--acc', CFG.shop.accent);
+}
+async function connect(){
+  LIVE = false;
+  if(workerUrl() && SET.key){
+    try{ await api('/api/check'); LIVE = true; }catch(e){ toast('WPS connection: ' + e.message + ' — using sample parts'); }
+  }
+  $('mode').textContent = LIVE ? 'Live WPS' : 'Sample parts';
+  $('mode').className = 'mode' + (LIVE ? ' live' : '');
+  $('bikeBox').style.display = LIVE ? '' : 'none';
+  $('demoNote').style.display = LIVE ? 'none' : '';
+  $('scope').style.display = LIVE ? '' : 'none';
+  if(LIVE){ try{ await loadMakes(); }catch(e){ toast(e.message); } }
+  $('q').placeholder = !LIVE ? 'Search sample parts…' : (scope === 'fit' ? 'Search parts that fit…' : 'Part # or words, any WPS part…');
+  renderList();
+}
+(async function boot(){
+  applyBrand();
+  $('taxRate').value = SET.tax;
+  $('cBike').dataset.auto = '1';
+  renderLabor(); render();
+  await connect();
+})();
+</script>
+</body>
+</html>
