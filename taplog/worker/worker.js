@@ -42,8 +42,10 @@ export default {
         return json(customerCopy(t), 200, cors);
       }
       if (req.method === 'GET' && (m = p.match(/^\/api\/bike\/([A-Za-z0-9_-]{4,40})$/))) {
+        // Anyone can tap a tag, so this shows the work only: no prices, no customer, and no
+        // invoice ID (that ID is what opens the customer's invoice).
         const idx = (await env.TICKETS.get('bike:' + m[1], 'json')) || [];
-        return json({ tag: m[1], visits: idx }, 200, cors);
+        return json({ tag: m[1], visits: idx.map(v => ({ no: v.no, saved: v.saved, bike: v.bike, work: v.work, status: v.status, shop: v.shop || '' })) }, 200, cors);
       }
       if (req.method === 'GET' && p === '/api/ping') {
         return json({ ok: true, wps: !!env.WPS_TOKEN, storage: !!env.TICKETS, multi: !!env.MASTER_KEY }, 200, cors);
@@ -223,7 +225,7 @@ export default {
         // Bike history, keyed by the TapLog tag on that bike
         if (t.tag && /^[A-Za-z0-9_-]{4,40}$/.test(t.tag)) {
           const idx = ((await env.GLOBAL.get('bike:' + t.tag, 'json')) || []).filter(x => x.id !== t.id);
-          idx.unshift(publicSummary(t));
+          idx.unshift(publicSummary(t, env.SHOP));
           await env.GLOBAL.put('bike:' + t.tag, JSON.stringify(idx.slice(0, 200)));
         }
         return json({ id: t.id, no: t.no }, 200, cors);
@@ -393,8 +395,10 @@ function summary(t) {
   return { id: t.id, no: t.no, saved: t.saved, name: (t.customer && t.customer.name) || '',
            bike: t.bike || '', total: t.totals && t.totals.total, status: t.status || '' };
 }
-function publicSummary(t) {
+function publicSummary(t, shop) {
+  // id is kept only so a re-saved ticket replaces its old entry; the public route strips it
   return { id: t.id, no: t.no, saved: t.saved, bike: t.bike || '',
+           shop: (t.shop && t.shop.name) || (shop && shop.name) || '',
            work: (t.lines || []).map(l => l.d).slice(0, 8), status: t.status || '' };
 }
 
