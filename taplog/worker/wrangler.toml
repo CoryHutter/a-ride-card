@@ -11,5 +11,7 @@ binding = "TICKETS"
 id = "PASTE_KV_ID_HERE"
 
 # Secrets are NOT stored here. Set them in the Cloudflare dashboard:
-#   WPS_TOKEN  (the shop's WPS API token)
-#   SHOP_KEY   (a password the shop's iPad will use)
+#   ADMIN_KEY  (Cory's password for admin.html, where shops are added)
+#   MASTER_KEY (a long random phrase that locks every shop's keys; never change it)
+# Optional, the original one-shop setup (still works):
+#   WPS_TOKEN, SHOP_KEY

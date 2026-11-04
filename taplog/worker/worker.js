@@ -5,9 +5,16 @@
  * and talks to WPS for the shop's invoice page. It also stores saved tickets and
  * each bike's service history.
  *
+ * One middleman serves every shop. Each shop has its own record (name, shop ID,
+ * password, WPS key, Parts Unlimited key). Keys are stored encrypted, and each shop
+ * only ever reaches its own key, tickets and history. Shops are added on admin.html.
+ *
  * Secrets (set in Cloudflare, never in this file):
- *   WPS_TOKEN  - the shop's WPS API token
- *   SHOP_KEY   - a password the shop's iPad sends; keeps strangers off the proxy
+ *   ADMIN_KEY  - Cory's password for the admin page (adding and editing shops)
+ *   MASTER_KEY - a long random phrase; locks the shops' keys and passwords. Never change it,
+ *                or every saved shop key has to be entered again.
+ *   WPS_TOKEN, SHOP_KEY - optional, the original one-shop setup. Still works; that shop
+ *                signs in with the password alone, no shop ID.
  * Storage binding:
  *   TICKETS    - a Workers KV namespace
  * Plain setting (wrangler.toml [vars]):
@@ -39,15 +46,20 @@ export default {
         return json({ tag: m[1], visits: idx }, 200, cors);
       }
       if (req.method === 'GET' && p === '/api/ping') {
-        return json({ ok: true, wps: !!env.WPS_TOKEN, storage: !!env.TICKETS }, 200, cors);
+        return json({ ok: true, wps: !!env.WPS_TOKEN, storage: !!env.TICKETS, multi: !!env.MASTER_KEY }, 200, cors);
       }
 
-      // ---- Everything else is shop-only ----
-      if (!env.SHOP_KEY || req.headers.get('X-Shop-Key') !== env.SHOP_KEY) {
-        return json({ error: 'Shop key missing or wrong' }, 401, cors);
-      }
+      // ---- Admin (Cory): add and edit shops ----
+      if (p.startsWith('/api/admin/')) return await admin(req, env, p, cors);
 
-      if (req.method === 'GET' && p === '/api/check') return json({ ok: true }, 200, cors);
+      // ---- Everything else is shop-only, and runs with that shop's own key and storage ----
+      const shop = await shopAuth(req, env);
+      if (!shop) return json({ error: 'Shop ID or password is wrong' }, 401, cors);
+      env = shopEnv(env, shop);
+
+      if (req.method === 'GET' && p === '/api/check') {
+        return json({ ok: true, shop: shop.name, id: shop.id, wps: !!shop.wps, pu: !!shop.pu, storage: !!env.GLOBAL }, 200, cors);
+      }
 
       // Bike picker: make -> model -> year
       if (req.method === 'GET' && p === '/api/makes') {
@@ -155,8 +167,8 @@ export default {
         }
 
         if (b.ticketId && /^[A-Za-z0-9]{6,24}$/.test(b.ticketId)) {
-          const t = await env.TICKETS.get('t:' + b.ticketId, 'json');
-          if (t) { t.wpsCart = cart; await env.TICKETS.put('t:' + t.id, JSON.stringify(t)); }
+          const t = await env.GLOBAL.get('t:' + b.ticketId, 'json');
+          if (t && ownsTicket(t, env.SHOP)) { t.wpsCart = cart; await env.GLOBAL.put('t:' + t.id, JSON.stringify(t)); }
         }
         return json(cart, 200, cors);
       }
@@ -192,13 +204,16 @@ export default {
         if (!t || typeof t !== 'object') return json({ error: 'Bad ticket' }, 400, cors);
         if (!t.id) t.id = rid(10);
         if (!/^[A-Za-z0-9]{6,24}$/.test(t.id)) return json({ error: 'Bad id' }, 400, cors);
+        const prev = await env.GLOBAL.get('t:' + t.id, 'json');
+        if (prev && !ownsTicket(prev, env.SHOP)) return json({ error: 'That ticket belongs to another shop' }, 403, cors);
+        t.shopId = env.SHOP.id;
         if (!t.no) {
           const n = parseInt((await env.TICKETS.get('seq')) || '1000', 10) + 1;
           await env.TICKETS.put('seq', String(n));
           t.no = 'INV-' + n;
         }
         t.saved = new Date().toISOString();
-        await env.TICKETS.put('t:' + t.id, JSON.stringify(t));
+        await env.GLOBAL.put('t:' + t.id, JSON.stringify(t));
 
         // Recent list for the shop
         const recent = ((await env.TICKETS.get('recent', 'json')) || []).filter(x => x.id !== t.id);
@@ -207,9 +222,9 @@ export default {
 
         // Bike history, keyed by the TapLog tag on that bike
         if (t.tag && /^[A-Za-z0-9_-]{4,40}$/.test(t.tag)) {
-          const idx = ((await env.TICKETS.get('bike:' + t.tag, 'json')) || []).filter(x => x.id !== t.id);
+          const idx = ((await env.GLOBAL.get('bike:' + t.tag, 'json')) || []).filter(x => x.id !== t.id);
           idx.unshift(publicSummary(t));
-          await env.TICKETS.put('bike:' + t.tag, JSON.stringify(idx.slice(0, 200)));
+          await env.GLOBAL.put('bike:' + t.tag, JSON.stringify(idx.slice(0, 200)));
         }
         return json({ id: t.id, no: t.no }, 200, cors);
       }
@@ -217,8 +232,8 @@ export default {
         return json((await env.TICKETS.get('recent', 'json')) || [], 200, cors);
       }
       if (req.method === 'GET' && (m = p.match(/^\/api\/tickets\/([A-Za-z0-9]{6,24})$/))) {
-        const t = await env.TICKETS.get('t:' + m[1], 'json');
-        return t ? json(t, 200, cors) : json({ error: 'Not found' }, 404, cors);
+        const t = await env.GLOBAL.get('t:' + m[1], 'json');
+        return t && ownsTicket(t, env.SHOP) ? json(t, 200, cors) : json({ error: 'Not found' }, 404, cors);
       }
 
       return json({ error: 'Unknown route' }, 404, cors);
@@ -236,7 +251,7 @@ function corsHeaders(origin, env) {
   return {
     'Access-Control-Allow-Origin': ok ? (origin || '*') : allowed[0],
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, X-Shop-Key',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Shop-Key, X-Admin-Key',
     'Access-Control-Max-Age': '86400',
     'Vary': 'Origin'
   };
@@ -254,7 +269,7 @@ function rid(n) {
 }
 
 async function wpsGet(env, path) {
-  if (!env.WPS_TOKEN) throw new Error('WPS key not set on the middleman');
+  if (!env.WPS_TOKEN) throw new Error('No WPS key saved for this shop yet');
   const r = await fetch(WPS + path, {
     headers: { Authorization: 'Bearer ' + env.WPS_TOKEN, Accept: 'application/json' }
   });
@@ -264,7 +279,7 @@ async function wpsGet(env, path) {
 }
 
 async function wpsSend(env, method, path, body) {
-  if (!env.WPS_TOKEN) throw new Error('WPS key not set on the middleman');
+  if (!env.WPS_TOKEN) throw new Error('No WPS key saved for this shop yet');
   const r = await fetch(WPS + path, {
     method,
     headers: { Authorization: 'Bearer ' + env.WPS_TOKEN, Accept: 'application/json', 'Content-Type': 'application/json' },
@@ -285,8 +300,8 @@ function wpsMsg(b) {
 
 /* Follow WPS cursor pages (up to a limit) and keep the result for `ttl` seconds. */
 async function wpsAll(env, ctx, path, ttl, keepIncluded) {
-  const key = 'c:' + path;
-  if (ttl) { const hit = await env.TICKETS.get(key, 'json'); if (hit) return hit; }
+  const key = 'c:' + path, kv = env.GLOBAL || env.TICKETS;
+  if (ttl) { const hit = await kv.get(key, 'json'); if (hit) return hit; }
   let out = [], included = [], cursor = null, pages = 0;
   do {
     const r = await wpsGet(env, path + (cursor ? '&page[cursor]=' + encodeURIComponent(cursor) : ''));
@@ -300,7 +315,7 @@ async function wpsAll(env, ctx, path, ttl, keepIncluded) {
     pages++;
   } while (cursor && pages < 8);
   if (keepIncluded) out.forEach(row => { row._included = included; });
-  if (ttl) ctx.waitUntil(env.TICKETS.put(key, JSON.stringify(out), { expirationTtl: ttl }));
+  if (ttl) ctx.waitUntil(kv.put(key, JSON.stringify(out), { expirationTtl: ttl }));
   return out;
 }
 
@@ -322,14 +337,14 @@ const compact = r => ({
 
 /* Every part WPS lists for one bike, kept for a day so searches are instant. */
 async function fitList(env, ctx, vehicle) {
-  const key = 'fit:' + vehicle;
-  const hit = await env.TICKETS.get(key, 'json');
+  const key = 'fit:' + vehicle, kv = env.GLOBAL || env.TICKETS;
+  const hit = await kv.get(key, 'json');
   if (hit) return hit;
   const rows = await wpsAll(env, ctx, '/vehicles/' + vehicle + '/items?page[size]=1000', 0);
   const brands = await brandMap(env, ctx);
   const list = rows.map(compact).filter(r => r.st !== 'NLA' && r.st !== 'DSC');
   list.forEach(r => { r.bn = brands[r.b] || ''; });
-  ctx.waitUntil(env.TICKETS.put(key, JSON.stringify(list), { expirationTtl: 86400 }));
+  ctx.waitUntil(kv.put(key, JSON.stringify(list), { expirationTtl: 86400 }));
   return list;
 }
 
@@ -385,11 +400,148 @@ function publicSummary(t) {
 
 /* WPS brand names by id, kept for a day */
 async function brandMap(env, ctx) {
-  const hit = await env.TICKETS.get('brands', 'json');
+  const kv = env.GLOBAL || env.TICKETS;
+  const hit = await kv.get('brands', 'json');
   if (hit) return hit;
   const rows = await wpsAll(env, ctx, '/brands?page[size]=1000', 0);
   const map = {};
   rows.forEach(b => { map[b.id] = b.name; });
-  ctx.waitUntil(env.TICKETS.put('brands', JSON.stringify(map), { expirationTtl: 86400 }));
+  ctx.waitUntil(kv.put('brands', JSON.stringify(map), { expirationTtl: 86400 }));
   return map;
+}
+
+/* ---------------- shops ---------------- */
+
+const SHOP_ID = /^[a-z0-9-]{2,30}$/;
+
+/* Which shop is calling. The iPad sends "shopid:password". The original one-shop
+   setup sends the SHOP_KEY password alone and keeps using WPS_TOKEN. */
+async function shopAuth(req, env) {
+  const h = req.headers.get('X-Shop-Key') || '';
+  if (env.SHOP_KEY && same(h, env.SHOP_KEY)) {
+    return { id: 'default', name: '', wps: env.WPS_TOKEN || '', pu: env.PU_KEY || '' };
+  }
+  const i = h.indexOf(':');
+  if (i < 1 || !env.MASTER_KEY) return null;
+  const id = h.slice(0, i).trim().toLowerCase(), pass = h.slice(i + 1);
+  if (!SHOP_ID.test(id) || !pass) return null;
+  const s = await env.TICKETS.get('shop:' + id, 'json');
+  if (!s || s.off) return null;
+  if (!same(await passHash(env, id, pass), s.ph)) return null;
+  return { id, name: s.name, wps: s.wps ? await unlock(env, s.wps) : '', pu: s.pu ? await unlock(env, s.pu) : '' };
+}
+
+/* The same env, but WPS calls use this shop's key and storage is this shop's own drawer.
+   Tickets (customer links), bike tags and catalog caches stay in the shared GLOBAL store. */
+function shopEnv(env, shop) {
+  const kv = env.TICKETS, pre = shop.id === 'default' ? '' : 's:' + shop.id + ':';
+  return Object.assign({}, env, {
+    WPS_TOKEN: shop.wps, PU_KEY: shop.pu, SHOP: shop, GLOBAL: kv,
+    TICKETS: {
+      get: (k, t) => kv.get(pre + k, t),
+      put: (k, v, o) => kv.put(pre + k, v, o),
+      delete: k => kv.delete(pre + k)
+    }
+  });
+}
+const ownsTicket = (t, shop) => (t.shopId || 'default') === shop.id;
+
+async function admin(req, env, p, cors) {
+  if (!env.ADMIN_KEY || !same(req.headers.get('X-Admin-Key') || '', env.ADMIN_KEY)) {
+    return json({ error: 'Admin key missing or wrong' }, 401, cors);
+  }
+  if (!env.MASTER_KEY) return json({ error: 'MASTER_KEY isn’t set on the middleman yet (setup step 4)' }, 400, cors);
+  const kv = env.TICKETS;
+  let m;
+
+  if (req.method === 'GET' && p === '/api/admin/shops') {
+    const out = [];
+    let cursor;
+    do {
+      const l = await kv.list({ prefix: 'shop:', cursor });
+      for (const k of l.keys) { const s = await kv.get(k.name, 'json'); if (s) out.push(shopRow(s)); }
+      cursor = l.list_complete ? null : l.cursor;
+    } while (cursor);
+    return json(out.sort((a, b) => a.name.localeCompare(b.name)), 200, cors);
+  }
+
+  if (req.method === 'POST' && p === '/api/admin/shops') {
+    const b = await req.json();
+    const id = String(b.id || '').trim().toLowerCase();
+    if (!SHOP_ID.test(id) || id === 'default') return json({ error: 'Shop ID: 2 to 30 lowercase letters, numbers or dashes' }, 400, cors);
+    const old = await kv.get('shop:' + id, 'json');
+    const name = String(b.name || (old && old.name) || '').trim().slice(0, 60);
+    if (!name) return json({ error: 'Shop name is needed' }, 400, cors);
+    const pass = String(b.password || '');
+    if (!old && !pass) return json({ error: 'A new shop needs a password' }, 400, cors);
+    if (pass && pass.length < 8) return json({ error: 'Password needs at least 8 characters' }, 400, cors);
+    if (b.isNew && old) return json({ error: 'There’s already a shop with ID ' + id }, 400, cors);
+    const s = Object.assign({ id, created: new Date().toISOString() }, old || {}, { name, updated: new Date().toISOString() });
+    if (pass) s.ph = await passHash(env, id, pass);
+    const wps = String(b.wps || '').trim(), pu = String(b.pu || '').trim();
+    if (wps) { s.wps = await lock(env, wps); s.wpsEnd = wps.slice(-4); }
+    if (pu) { s.pu = await lock(env, pu); s.puEnd = pu.slice(-4); }
+    if (b.clearPu) { delete s.pu; delete s.puEnd; }
+    if (typeof b.off === 'boolean') s.off = b.off;
+    await kv.put('shop:' + id, JSON.stringify(s));
+    return json(shopRow(s), 200, cors);
+  }
+
+  if (req.method === 'POST' && (m = p.match(/^\/api\/admin\/shops\/([a-z0-9-]{2,30})\/delete$/))) {
+    // Removes the sign-in and keys only. The shop's tickets stay, in case it's added back.
+    await kv.delete('shop:' + m[1]);
+    return json({ ok: true }, 200, cors);
+  }
+
+  if (req.method === 'POST' && p === '/api/admin/test-wps') {
+    const b = await req.json();
+    let tok = String(b.wps || '').trim();
+    if (!tok && b.id) { const s = await kv.get('shop:' + String(b.id).toLowerCase(), 'json'); if (s && s.wps) tok = await unlock(env, s.wps); }
+    if (!tok) return json({ ok: false, msg: 'No WPS key to test' }, 200, cors);
+    const t = { WPS_TOKEN: tok };
+    const a = await wpsGet(t, '/items?page[size]=1');
+    if (!a.ok) return json({ ok: false, msg: a.status === 401 ? 'WPS doesn’t accept this key. Check it was copied whole.' : 'WPS answered with error ' + a.status }, 200, cors);
+    const f = await wpsGet(t, '/vehiclemakes?page[size]=1');
+    const item = a.body && a.body.data && a.body.data[0];
+    let priced = null;
+    if (item) { const d = await wpsGet(t, '/dealer-pricing/' + item.id); priced = d.ok && findCost(d.body) != null; }
+    return json({ ok: true, fitment: f.ok, pricing: priced,
+      msg: 'Key works.' + (f.ok ? ' Fitment is on.' : ' Fitment is NOT unlocked on this account yet, so "fits this bike" won’t work.') +
+           (priced === false ? ' Dealer pricing didn’t come back, so it will fall back to standard dealer cost.' : '') }, 200, cors);
+  }
+
+  return json({ error: 'Unknown admin route' }, 404, cors);
+}
+function shopRow(s) {
+  return { id: s.id, name: s.name, wps: !!s.wps, wpsEnd: s.wpsEnd || '', pu: !!s.pu, puEnd: s.puEnd || '',
+           off: !!s.off, created: s.created, updated: s.updated };
+}
+
+/* ---------------- locking keys ---------------- */
+const te = new TextEncoder();
+const b64 = u8 => btoa(String.fromCharCode(...u8));
+const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function aesKey(env) {
+  const raw = await crypto.subtle.digest('SHA-256', te.encode('taplog-lock|' + env.MASTER_KEY));
+  return crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['encrypt', 'decrypt']);
+}
+async function lock(env, text) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await aesKey(env), te.encode(text));
+  return b64(iv) + '.' + b64(new Uint8Array(ct));
+}
+async function unlock(env, box) {
+  const [iv, ct] = String(box).split('.');
+  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(iv) }, await aesKey(env), unb64(ct));
+  return new TextDecoder().decode(pt);
+}
+async function passHash(env, id, pass) {
+  const d = await crypto.subtle.digest('SHA-256', te.encode('taplog-pass|' + env.MASTER_KEY + '|' + id + '|' + pass));
+  return b64(new Uint8Array(d));
+}
+function same(a, b) {
+  a = String(a); b = String(b);
+  let diff = a.length ^ b.length;
+  for (let i = 0; i < Math.max(a.length, b.length); i++) diff |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0);
+  return diff === 0;
 }

@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>TapLog Shops</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#15171B;--panel:#1E2127;--panel-2:#262A31;--line:#363B44;--acc:#E8742A;--acc-dim:#9C5420;--ink:#F1F2F4;--muted:#949AA6;--green:#4FA85C;--red:#D0493D;--amber:#D9A43A}
+*{box-sizing:border-box}
+html,body{margin:0;overflow-x:hidden}
+body{background:var(--bg);color:var(--ink);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:15px;line-height:1.45}
+.wrap{max-width:720px;margin:0 auto;padding:18px 16px 60px}
+h1,h2{font-family:"Barlow Condensed",Impact,sans-serif;font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin:0}
+h1{font-size:28px}
+h1 span{color:var(--acc)}
+.lead{color:var(--muted);font-size:13.5px;margin:4px 0 18px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:14px}
+.card h2{font-size:17px;color:var(--acc);margin-bottom:10px}
+label{display:flex;flex-direction:column;gap:4px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);min-width:0}
+input{background:var(--bg);border:1px solid var(--line);border-radius:4px;color:var(--ink);padding:10px;font-size:15px;font-family:inherit;letter-spacing:0;text-transform:none;width:100%;min-width:0}
+input:focus{outline:none;border-color:var(--acc)}
+input.mono{font-family:"IBM Plex Mono",monospace;font-size:13.5px}
+.grid{display:grid;grid-template-columns:1fr;gap:10px}
+@media(min-width:560px){.two{grid-template-columns:1fr 1fr}}
+.hint{font-size:12px;color:var(--muted);text-transform:none;letter-spacing:0}
+.row{display:flex;gap:8px;align-items:end}
+.row > label{flex:1}
+button{font-family:"Barlow Condensed",sans-serif;font-weight:600;font-size:14px;letter-spacing:.1em;text-transform:uppercase;padding:11px 14px;border-radius:4px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;white-space:nowrap}
+button.primary{background:var(--acc);border-color:var(--acc);color:#111}
+button.small{padding:8px 10px;font-size:12.5px}
+button:disabled{opacity:.5}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.status{font-size:13px;padding:9px 11px;border-radius:5px;border:1px solid var(--line);margin-top:10px;display:none}
+.status.ok{display:block;border-color:var(--green);color:var(--green)}
+.status.bad{display:block;border-color:var(--red);color:var(--red)}
+.status.info{display:block;color:var(--muted)}
+.shop{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)}
+.shop:last-child{border-bottom:0}
+.shop b{font-size:15px}
+.shop small{display:block;color:var(--muted);font-size:12px;font-family:"IBM Plex Mono",monospace}
+.pill{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:10.5px;padding:1px 7px;border-radius:3px;border:1px solid var(--line);margin:4px 6px 0 0;color:var(--muted)}
+.pill.on{border-color:var(--green);color:var(--green)}
+.pill.off{border-color:var(--red);color:var(--red)}
+.empty{color:var(--muted);font-size:13.5px;padding:8px 0}
+.send{border-color:var(--green)}
+.send textarea{width:100%;min-height:170px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:5px;padding:10px;font-family:"IBM Plex Mono",monospace;font-size:12.5px;line-height:1.45;resize:vertical}
+.warn{color:var(--amber);font-size:12.5px;margin-top:8px}
+.chk{flex-direction:row;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:14px;color:var(--ink)}
+.chk input{width:auto}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>TapLog <span>Shops</span></h1>
+  <div class="lead">Your page for adding shops to the invoice. Each shop gets its own sign-in and its own WPS key,
+    so every shop sees only its own pricing and tickets. Keys are locked on the middleman and can't be read back.</div>
+
+  <div class="card" id="signin">
+    <h2>Sign in</h2>
+    <div class="grid">
+      <label>Middleman address<input id="aWorker" class="mono" placeholder="https://taplog-shop.yourname.workers.dev" autocapitalize="off" spellcheck="false"></label>
+      <label>Admin key<input id="aKey" type="password" autocapitalize="off" spellcheck="false"></label>
+      <label class="chk"><input type="checkbox" id="aRemember" checked> Remember on this device</label>
+    </div>
+    <div class="btns"><button class="primary" id="aGo">Show my shops</button></div>
+    <div class="status" id="aStat"></div>
+  </div>
+
+  <div id="main" style="display:none">
+    <div class="status" id="mStat" style="margin:0 0 12px"></div>
+    <div class="card">
+      <h2>Shops</h2>
+      <div id="list"></div>
+      <div class="btns"><button class="primary" id="addBtn">+ Add a shop</button></div>
+    </div>
+
+    <div class="card" id="formCard" style="display:none">
+      <h2 id="formTitle">Add a shop</h2>
+      <div class="grid two">
+        <label>Shop name<input id="fName" placeholder="Generation MX" autocomplete="off"></label>
+        <label>Shop ID <span class="hint">short, used to sign in</span><input id="fId" class="mono" placeholder="genmx" autocapitalize="off" autocomplete="off" spellcheck="false"></label>
+      </div>
+      <div class="grid" style="margin-top:10px">
+        <div class="row">
+          <label>Shop password <span class="hint" id="pwHint">for the shop's iPad</span><input id="fPass" class="mono" autocapitalize="off" autocomplete="off" spellcheck="false"></label>
+          <button class="small" id="genBtn">Make one</button>
+        </div>
+        <div class="row">
+          <label>WPS API key <span class="hint" id="wpsHint">from the shop's WPS account</span><input id="fWps" class="mono" type="password" autocapitalize="off" autocomplete="off" spellcheck="false"></label>
+          <button class="small" id="testBtn">Test</button>
+        </div>
+        <label>Parts Unlimited key <span class="hint" id="puHint">optional, saved for when the invoice can use it</span><input id="fPu" class="mono" type="password" autocapitalize="off" autocomplete="off" spellcheck="false"></label>
+        <label class="chk" id="clearPuRow" style="display:none"><input type="checkbox" id="fClearPu"> Remove the saved Parts Unlimited key</label>
+        <label class="chk" id="offRow" style="display:none"><input type="checkbox" id="fOff"> Turn this shop off (it can't sign in until turned back on)</label>
+      </div>
+      <div class="status" id="fStat"></div>
+      <div class="btns">
+        <button class="primary" id="saveBtn">Save shop</button>
+        <button id="cancelBtn">Cancel</button>
+        <button id="delBtn" style="display:none;margin-left:auto;border-color:var(--red);color:var(--red)">Remove shop</button>
+      </div>
+    </div>
+
+    <div class="card send" id="sendCard" style="display:none">
+      <h2 style="color:var(--green)">Send this to the shop</h2>
+      <div class="hint" style="margin-bottom:8px">Text it to the person who runs the iPad. They tap the link on the iPad, and the invoice connects by itself.</div>
+      <textarea id="sendText" spellcheck="false"></textarea>
+      <div class="btns">
+        <button class="primary" id="sms">Text it</button>
+        <button id="copy">Copy</button>
+        <button id="share" style="display:none">Share…</button>
+      </div>
+      <div class="warn">The link holds the shop's password. Only send it to the shop. If it ever goes to the wrong person, edit the shop here and make a new password.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const store = {
+  get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){} }
+};
+const W = () => $('aWorker').value.trim().replace(/\/+$/, '');
+let SHOPS = [], editing = null;
+
+function stat(id, kind, msg){ const s = $(id); s.className = 'status ' + kind; s.textContent = msg; }
+async function api(path, opts){
+  const r = await fetch(W() + path, Object.assign({headers: {'X-Admin-Key': $('aKey').value, 'Content-Type': 'application/json'}}, opts || {}));
+  let b = null; try{ b = await r.json(); }catch(e){}
+  if(!r.ok) throw new Error((b && b.error) || ('Error ' + r.status));
+  return b;
+}
+
+$('aWorker').value = store.get('tla_worker') || '';
+$('aKey').value = store.get('tla_key') || '';
+
+async function load(){
+  stat('aStat', 'info', 'Loading…');
+  try{ SHOPS = await api('/api/admin/shops'); }
+  catch(e){
+    stat('aStat', 'bad', /Failed to fetch|NetworkError|Load failed/.test(e.message) ? 'Couldn’t reach that address. Check it for typos.' : e.message);
+    return false;
+  }
+  if($('aRemember').checked){ store.set('tla_worker', W()); store.set('tla_key', $('aKey').value); }
+  else { store.del('tla_worker'); store.del('tla_key'); }
+  $('aStat').className = 'status'; $('signin').style.display = 'none'; $('main').style.display = '';
+  drawList(); return true;
+}
+$('aGo').addEventListener('click', load);
+
+function drawList(){
+  $('list').innerHTML = SHOPS.length ? SHOPS.map((s, i) =>
+    '<div class="shop"><div><b>' + esc(s.name) + '</b><small>ID ' + esc(s.id) + '</small>' +
+      '<span class="pill ' + (s.wps ? 'on' : 'off') + '">WPS ' + (s.wps ? '…' + esc(s.wpsEnd) : 'missing') + '</span>' +
+      '<span class="pill ' + (s.pu ? 'on' : '') + '">Parts Unlimited ' + (s.pu ? '…' + esc(s.puEnd) : 'none') + '</span>' +
+      (s.off ? '<span class="pill off">Turned off</span>' : '') + '</div>' +
+      '<button class="small" data-i="' + i + '">Edit</button></div>').join('')
+    : '<div class="empty">No shops yet. Add the first one below.</div>';
+}
+$('list').addEventListener('click', e => { const b = e.target.closest('[data-i]'); if(b) openForm(SHOPS[+b.dataset.i]); });
+
+function slug(s){ return s.toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30); }
+function makePass(){
+  const a = 'abcdefghjkmnpqrstuvwxyz23456789', b = crypto.getRandomValues(new Uint8Array(12));
+  const s = Array.from(b, x => a[x % a.length]).join('');
+  return s.slice(0, 4) + '-' + s.slice(4, 8) + '-' + s.slice(8);
+}
+let idTouched = false;
+function openForm(s){
+  editing = s || null; idTouched = !!s;
+  $('formTitle').textContent = s ? 'Edit ' + s.name : 'Add a shop';
+  $('fName').value = s ? s.name : ''; $('fId').value = s ? s.id : ''; $('fId').disabled = !!s;
+  $('fPass').value = s ? '' : makePass(); $('fWps').value = ''; $('fPu').value = '';
+  $('pwHint').textContent = s ? 'leave blank to keep the current one' : "for the shop's iPad";
+  $('wpsHint').textContent = s && s.wps ? 'saved (…' + s.wpsEnd + '). Leave blank to keep it' : "from the shop's WPS account";
+  $('puHint').textContent = s && s.pu ? 'saved (…' + s.puEnd + '). Leave blank to keep it' : 'optional, saved for when the invoice can use it';
+  $('clearPuRow').style.display = s && s.pu ? '' : 'none'; $('fClearPu').checked = false;
+  $('offRow').style.display = s ? '' : 'none'; $('fOff').checked = !!(s && s.off);
+  $('delBtn').style.display = s ? '' : 'none';
+  $('fStat').className = 'status'; $('sendCard').style.display = 'none';
+  $('formCard').style.display = ''; $('formCard').scrollIntoView({behavior: 'smooth', block: 'start'});
+}
+$('addBtn').addEventListener('click', () => openForm(null));
+$('cancelBtn').addEventListener('click', () => { $('formCard').style.display = 'none'; });
+$('fName').addEventListener('input', () => { if(!idTouched && !editing) $('fId').value = slug($('fName').value); });
+$('fId').addEventListener('input', () => { idTouched = true; });
+$('genBtn').addEventListener('click', () => { $('fPass').value = makePass(); });
+
+$('testBtn').addEventListener('click', async () => {
+  const wps = $('fWps').value.trim();
+  if(!wps && !(editing && editing.wps)){ stat('fStat', 'bad', 'Paste the WPS key first.'); return; }
+  stat('fStat', 'info', 'Asking WPS…');
+  try{
+    const r = await api('/api/admin/test-wps', {method: 'POST', body: JSON.stringify(wps ? {wps} : {id: editing.id})});
+    stat('fStat', r.ok && r.fitment ? 'ok' : 'bad', r.msg);
+  }catch(e){ stat('fStat', 'bad', e.message); }
+});
+
+$('saveBtn').addEventListener('click', async () => {
+  const body = {name: $('fName').value.trim(), id: (editing ? editing.id : $('fId').value.trim().toLowerCase()),
+    password: $('fPass').value.trim(), wps: $('fWps').value.trim(), pu: $('fPu').value.trim(), isNew: !editing};
+  if(editing){ body.off = $('fOff').checked; if($('fClearPu').checked) body.clearPu = true; }
+  if(!body.name){ stat('fStat', 'bad', 'Give the shop a name.'); return; }
+  if(!editing && !body.wps){ stat('fStat', 'bad', 'Paste the shop’s WPS key. You can test it first.'); return; }
+  $('saveBtn').disabled = true; stat('fStat', 'info', 'Saving…');
+  try{
+    const s = await api('/api/admin/shops', {method: 'POST', body: JSON.stringify(body)});
+    const i = SHOPS.findIndex(x => x.id === s.id); if(i >= 0) SHOPS[i] = s; else SHOPS.push(s);
+    SHOPS.sort((a, b) => a.name.localeCompare(b.name)); drawList();
+    $('formCard').style.display = 'none';
+    if(body.password) showSend(s, body.password);
+    else { $('sendCard').style.display = 'none'; stat('mStat', 'ok', s.name + ' saved.'); }
+  }catch(e){ stat('fStat', 'bad', e.message); }
+  $('saveBtn').disabled = false;
+});
+$('delBtn').addEventListener('click', async () => {
+  if(!editing || !confirm('Remove ' + editing.name + '?\n\nIts sign-in and keys are deleted, so its iPad stops connecting. Its saved tickets are kept.')) return;
+  try{
+    await api('/api/admin/shops/' + editing.id + '/delete', {method: 'POST'});
+    SHOPS = SHOPS.filter(x => x.id !== editing.id); drawList(); $('formCard').style.display = 'none';
+  }catch(e){ stat('fStat', 'bad', e.message); }
+});
+
+function b64url(s){ return btoa(unescape(encodeURIComponent(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+function showSend(s, pass){
+  const page = location.href.replace(/[^/]*([?#].*)?$/, '') + 'shop-invoice.html';
+  const link = page + '#connect=' + b64url(JSON.stringify({w: W(), s: s.id, k: pass, n: s.name}));
+  $('sendText').value = 'Hi! Your shop invoice is ready to connect to WPS. On the shop iPad, open this link:\n\n' + link +
+    '\n\nIf you ever need to type it in instead (Settings > WPS connection):\nMiddleman address: ' + W() +
+    '\nShop ID: ' + s.id + '\nShop password: ' + pass;
+  $('share').style.display = navigator.share ? '' : 'none';
+  $('sendCard').style.display = ''; $('sendCard').scrollIntoView({behavior: 'smooth', block: 'start'});
+}
+$('sms').addEventListener('click', () => { location.href = 'sms:&body=' + encodeURIComponent($('sendText').value); });
+$('copy').addEventListener('click', () => {
+  const t = $('sendText').value;
+  (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => stat('mStat', 'ok', 'Copied.'),
+    () => { $('sendText').select(); document.execCommand('copy'); });
+});
+$('share').addEventListener('click', () => navigator.share({text: $('sendText').value}).catch(() => {}));
+
+if(W() && $('aKey').value) load();
+</script>
+</body>
+</html>

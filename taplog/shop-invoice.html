@@ -448,9 +448,12 @@ button{font:inherit}
       <h4>Pickup message</h4>
       <label>Added to the bike-ready text<textarea id="sPolicy" style="min-height:70px;font-family:inherit"></textarea></label>
       <h4>WPS connection</h4>
-      <div class="sub">The middleman's address and the shop password, from the setup steps. The WPS key itself stays on the middleman, never on this iPad.</div>
+      <div class="sub">From the setup text you were sent. Tapping the setup link fills these in for you. The WPS key itself stays on the middleman, never on this iPad.</div>
       <label>Middleman address<input id="sWorker" placeholder="https://taplog-shop.yourname.workers.dev" autocapitalize="off" spellcheck="false"></label>
-      <label>Shop password<input id="sKey" type="password" autocapitalize="off" spellcheck="false"></label>
+      <div class="row" style="grid-template-columns:1fr 1.4fr">
+        <label>Shop ID<input id="sShop" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="genmx"></label>
+        <label>Shop password<input id="sKey" type="password" autocapitalize="off" spellcheck="false"></label>
+      </div>
       <div class="status" id="sStatus" style="display:none"></div>
     </div>
     <div class="btns">
@@ -493,12 +496,13 @@ function loadSet(){
     name: CFG.shop.name || 'Your Shop', phone: CFG.shop.phone || '', addr: CFG.shop.address || '',
     tax: 6.25, labor: DEFAULT_LABOR, supOn: false, supPct: 5, supCap: 25, supTax: false,
     policy: 'Please pick up within 48 hours. After that, storage is $75 per day unless arranged ahead of time.',
-    worker: CFG.worker || '', key: '', oemMk: 30, oemSite: ''
+    worker: CFG.worker || '', shopId: '', key: '', oemMk: 30, oemSite: ''
   }, s);
 }
 let SET = loadSet();
 const saveSet = () => store.set('tlg_settings', JSON.stringify(SET));
 const workerUrl = () => (SET.worker || '').trim().replace(/\/+$/, '');
+const shopHeader = (id, key) => ((id || '').trim() ? id.trim().toLowerCase() + ':' : '') + (key || '');
 let LIVE = false;
 
 function laborMenu(){
@@ -509,7 +513,7 @@ function laborMenu(){
 /* ---------------- Middleman calls ---------------- */
 async function api(path, opts){
   const r = await fetch(workerUrl() + path, Object.assign({
-    headers: {'X-Shop-Key': SET.key || '', 'Content-Type': 'application/json'}
+    headers: {'X-Shop-Key': shopHeader(SET.shopId, SET.key), 'Content-Type': 'application/json'}
   }, opts || {}));
   let body = null; try{ body = await r.json(); }catch(e){}
   if(!r.ok) throw new Error((body && body.error) || ('Error ' + r.status));
@@ -1529,7 +1533,7 @@ function showStatus(ok, msg){ const s = $('sStatus'); s.style.display = ''; s.cl
 $('gearBtn').addEventListener('click', () => {
   $('sName').value = SET.name; $('sPhone').value = SET.phone; $('sAddr').value = SET.addr; $('sTax').value = SET.tax;
   $('sLabor').value = SET.labor; $('sSupOn').checked = !!SET.supOn; $('sSupPct').value = SET.supPct; $('sSupCap').value = SET.supCap;
-  $('sSupTax').checked = !!SET.supTax; $('sPolicy').value = SET.policy; $('sWorker').value = SET.worker; $('sKey').value = SET.key;
+  $('sSupTax').checked = !!SET.supTax; $('sPolicy').value = SET.policy; $('sWorker').value = SET.worker; $('sShop').value = SET.shopId || ''; $('sKey').value = SET.key;
   $('sOemMk').value = SET.oemMk; $('sOemSite').value = SET.oemSite || '';
   $('sStatus').style.display = 'none';
   $('setSheet').classList.add('open');
@@ -1540,14 +1544,15 @@ $('sTest').addEventListener('click', async () => {
   if(!w){ showStatus(false, 'Put in the middleman address first.'); return; }
   showStatus(true, 'Checking…');
   try{
-    const r = await fetch(w + '/api/check', {headers: {'X-Shop-Key': $('sKey').value}});
+    const r = await fetch(w + '/api/check', {headers: {'X-Shop-Key': shopHeader($('sShop').value, $('sKey').value)}});
     const b = await r.json().catch(() => ({}));
-    if(r.status === 401) return showStatus(false, 'Middleman found, but the shop password is wrong.');
+    if(r.status === 401) return showStatus(false, 'Middleman found, but the shop ID or password is wrong.');
     if(!r.ok) return showStatus(false, b.error || ('Error ' + r.status));
-    const p = await (await fetch(w + '/api/ping')).json();
-    if(!p.wps) return showStatus(false, 'Connected, but the WPS key isn’t set on the middleman yet.');
-    if(!p.storage) return showStatus(false, 'Connected, but ticket storage isn’t hooked up yet (step 3).');
-    showStatus(true, 'Connected. Tap Save to switch to live WPS parts.');
+    let wps = b.wps, storage = b.storage;
+    if(wps === undefined){ const p = await (await fetch(w + '/api/ping')).json(); wps = p.wps; storage = p.storage; }
+    if(!wps) return showStatus(false, 'Connected, but no WPS key is saved for this shop yet.');
+    if(!storage) return showStatus(false, 'Connected, but ticket storage isn’t hooked up yet (step 3).');
+    showStatus(true, 'Connected' + (b.shop ? ' as ' + b.shop : '') + '. Tap Save to switch to live WPS parts.');
   }catch(e){ showStatus(false, 'Couldn’t reach that address. Check it for typos.'); }
 });
 $('sSave').addEventListener('click', async () => {
@@ -1555,7 +1560,7 @@ $('sSave').addEventListener('click', async () => {
   SET.tax = parseFloat($('sTax').value) || 0; SET.labor = $('sLabor').value || DEFAULT_LABOR;
   SET.supOn = $('sSupOn').checked; SET.supPct = parseFloat($('sSupPct').value) || 0; SET.supCap = parseFloat($('sSupCap').value) || 0;
   SET.supTax = $('sSupTax').checked; SET.policy = $('sPolicy').value.trim();
-  SET.worker = $('sWorker').value.trim(); SET.key = $('sKey').value;
+  SET.worker = $('sWorker').value.trim(); SET.shopId = $('sShop').value.trim().toLowerCase(); SET.key = $('sKey').value;
   SET.oemMk = parseFloat($('sOemMk').value); if(isNaN(SET.oemMk)) SET.oemMk = 30;
   SET.oemSite = $('sOemSite').value.trim();
   saveSet(); $('setSheet').classList.remove('open');
@@ -1590,12 +1595,28 @@ async function connect(){
   $('q').placeholder = !LIVE ? 'Search sample parts…' : (scope === 'fit' ? 'Search parts that fit…' : 'Part # or words, any WPS part…');
   renderList();
 }
+/* Setup link from Cory: shop-invoice.html#connect=... fills in the WPS connection on this iPad */
+function readConnectLink(){
+  const m = location.hash.match(/^#connect=([A-Za-z0-9_-]+)/); if(!m) return false;
+  try{
+    const c = JSON.parse(decodeURIComponent(escape(atob(m[1].replace(/-/g, '+').replace(/_/g, '/')))));
+    if(c.w) SET.worker = c.w;
+    if(c.s != null) SET.shopId = String(c.s).toLowerCase();
+    if(c.k) SET.key = c.k;
+    if(c.n && (!SET.name || SET.name === 'Your Shop')) SET.name = c.n;
+    saveSet();
+  }catch(e){ toast('That setup link didn’t work — type it in Settings'); }
+  history.replaceState(null, '', location.pathname + location.search);
+  return true;
+}
 (async function boot(){
+  const fromLink = readConnectLink();
   applyBrand();
   $('taxRate').value = SET.tax;
   $('cBike').dataset.auto = '1';
   renderLabor(); render();
   await connect();
+  if(fromLink) toast(LIVE ? 'Connected to WPS' : 'Setup saved — check it in Settings');
 })();
 </script>
 </body>
