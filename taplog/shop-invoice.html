@@ -174,6 +174,16 @@ button{font:inherit}
 .form{display:grid;grid-template-columns:1fr;gap:9px}
 .form label{display:flex;flex-direction:column;gap:4px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
 .form input,.form textarea{background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--ink);padding:9px;font-size:14px;font-family:inherit;letter-spacing:0;text-transform:none}
+.form select{background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--ink);padding:9px;font-size:14px;font-family:inherit;letter-spacing:0;text-transform:none}
+.form label{min-width:0}
+.form input,.form select{width:100%;min-width:0}
+.omath{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--muted);min-height:16px}
+.look{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.look button,.look a{padding:10px 6px;border-radius:4px;font-size:12.5px;cursor:pointer;font-family:"Barlow Condensed",sans-serif;font-weight:600;letter-spacing:.08em;text-transform:uppercase;border:1px dashed var(--acc-dim);background:transparent;color:var(--acc);text-align:center;text-decoration:none}
+.look .full{grid-column:1/-1}
+.otk{position:relative;padding-right:40px}
+.otk .rm{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:28px;height:28px;border:1px solid var(--line);border-radius:4px;color:var(--muted);display:flex;align-items:center;justify-content:center;font-size:15px}
+.oemtag{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.06em;padding:1px 6px;border-radius:2px;border:1px solid var(--acc);color:var(--acc);margin-right:6px}
 .form textarea{min-height:130px;font-family:"IBM Plex Mono",monospace;font-size:12.5px}
 .form .row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
 .form .chk{flex-direction:row;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink)}
@@ -242,6 +252,7 @@ button{font:inherit}
     <div class="scroll" id="scroll">
       <div class="sec-label">Labor</div>
       <div class="labor" id="laborList"></div>
+      <div id="oemHits"></div>
       <div class="sec-label" id="partsLabel">Parts</div>
       <div id="list"></div>
     </div>
@@ -292,6 +303,7 @@ button{font:inherit}
         <button class="ready" id="readyBtn">Bike ready &mdash; text customer</button>
         <button class="order" id="orderBtn">Order parts from WPS</button>
         <button class="order" id="soBtn">Parts we keep special-ordering</button>
+        <button class="order" id="oemBtn">+ OEM part (Honda, Yamaha, KTM&hellip;)</button>
         <button id="addCustom">+ Custom line</button>
         <button id="quoteBtn">Quote</button>
         <button class="primary" id="printBtn">Print / PDF</button>
@@ -358,6 +370,43 @@ button{font:inherit}
   </div>
 </div>
 
+<!-- OEM part -->
+<div class="sheet" id="oemSheet">
+  <div class="panel">
+    <h3>OEM part</h3>
+    <div class="sub">Factory parts bought from a dealer or online. Every OEM part is remembered on this iPad, so next time
+      you can pick it from the list below, or just search it in the parts box.</div>
+    <div class="form">
+      <div class="row" style="grid-template-columns:1fr 1.4fr">
+        <label>Brand<select id="oBrand"></select></label>
+        <label>Part #<input id="oPn" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="If you have it"></label>
+      </div>
+      <label>Description<input id="oDesc" autocomplete="off" placeholder="Oil filter, clutch cable, brake pads&hellip;"></label>
+      <div class="row">
+        <label>Your cost each<input id="oCost" type="number" step="0.01" min="0" inputmode="decimal"></label>
+        <label>Charge each<input id="oPrice" type="number" step="0.01" min="0" inputmode="decimal"></label>
+        <label>Qty<input id="oQty" type="number" min="1" max="99" value="1" inputmode="numeric"></label>
+      </div>
+      <div class="omath" id="oMath"></div>
+      <label>Bought from<input id="oSrc" list="oSrcList" autocomplete="off" placeholder="Local dealer, website&hellip;"></label>
+      <datalist id="oSrcList"></datalist>
+      <h4>Look it up</h4>
+      <div class="look">
+        <button id="oDiagram">Parts diagram for this bike</button>
+        <button id="oFind">Search this part #</button>
+        <button class="full" id="oSite" style="display:none">Open your OEM parts site</button>
+      </div>
+      <div class="sub" id="oLookNote">Opens in a new tab. Find the part, copy the number, come back and paste it in Part #.</div>
+      <h4 id="oSavedHead">Saved OEM parts</h4>
+      <div id="oSaved"></div>
+    </div>
+    <div class="btns">
+      <button class="primary full" id="oAdd">Add to ticket</button>
+      <button class="full" id="oClose">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- Saved tickets -->
 <div class="sheet" id="tkSheet">
   <div class="panel">
@@ -390,6 +439,12 @@ button{font:inherit}
         <label>Max $<input id="sSupCap" type="number" step="1" inputmode="decimal"></label>
         <label class="chk" style="align-self:end"><input type="checkbox" id="sSupTax"> Taxed</label>
       </div>
+      <h4>OEM parts</h4>
+      <div class="row" style="grid-template-columns:1fr 1.6fr">
+        <label>Markup on OEM %<input id="sOemMk" type="number" step="1" min="0" inputmode="decimal"></label>
+        <label>Your OEM parts website (optional)<input id="sOemSite" placeholder="https://" autocapitalize="off" spellcheck="false"></label>
+      </div>
+      <div class="sub">Charge price for a new OEM part starts at your cost plus this markup. You can change it on any part.</div>
       <h4>Pickup message</h4>
       <label>Added to the bike-ready text<textarea id="sPolicy" style="min-height:70px;font-family:inherit"></textarea></label>
       <h4>WPS connection</h4>
@@ -438,7 +493,7 @@ function loadSet(){
     name: CFG.shop.name || 'Your Shop', phone: CFG.shop.phone || '', addr: CFG.shop.address || '',
     tax: 6.25, labor: DEFAULT_LABOR, supOn: false, supPct: 5, supCap: 25, supTax: false,
     policy: 'Please pick up within 48 hours. After that, storage is $75 per day unless arranged ahead of time.',
-    worker: CFG.worker || '', key: ''
+    worker: CFG.worker || '', key: '', oemMk: 30, oemSite: ''
   }, s);
 }
 let SET = loadSet();
@@ -591,6 +646,7 @@ function drawList(rows, label, extra){
 async function renderList(){
   const q = $('q').value.trim();
   const my = ++searchSeq;
+  drawOemHits(q);
   if(!LIVE){
     const words = q.toLowerCase().split(/\s+/).filter(Boolean);
     const rows = SAMPLE.filter(p => words.every(w => (p.sku + ' ' + p.name + ' ' + p.cat).toLowerCase().includes(w)));
@@ -725,7 +781,8 @@ function render(){
     $('lines').innerHTML = T.lines.map((l,i) => {
       const mg = lineMg(l);
       return '<div class="line' + (l.fresh ? ' new' : '') + '">' +
-        '<div class="info">' + (l.sku ? '<div class="lpn">' + esc(l.sku) + '</div>' : '<div class="lpn">' + (l.labor ? 'LABOR' : 'CUSTOM') + '</div>') +
+        '<div class="info">' + (l.oem ? '<div class="lpn">OEM' + (l.brand && l.brand !== 'Other' ? ' · ' + esc(l.brand.toUpperCase()) : '') + (l.sku ? ' · ' + esc(l.sku) : '') + '</div>' :
+            l.sku ? '<div class="lpn">' + esc(l.sku) + '</div>' : '<div class="lpn">' + (l.labor ? 'LABOR' : 'CUSTOM') + '</div>') +
           '<div class="ld">' + esc(l.d) + '</div></div>' +
         '<div class="ctl"><div class="qty"><button data-a="dec" data-i="' + i + '">&minus;</button><span>' + l.qty + '</span>' +
           '<button data-a="inc" data-i="' + i + '">+</button></div>' +
@@ -802,6 +859,7 @@ function ticketData(){
     bike: $('cBike').value.trim(), miles: $('cMiles').value.trim(), tag: $('cTag').value.trim(),
     notes: $('cNotes').value.trim(), status: $('cStatus').value,
     lines: T.lines.map(l => ({sku: l.sku, wid: l.wid || null, d: l.d, qty: l.qty, price: l.price, ovr: l.ovr,
+      oem: !!l.oem, okey: l.okey || '', brand: l.brand || '', src: l.src || '',
       unit: unitSell(l), amt: lineTotal(l), tax: l.tax, labor: l.labor, cost: l.cost, costSrc: l.costSrc || '', stock: l.stock || null})),
     totals: {parts: c.partsSub, labor: c.laborSub, discPct: c.pct, disc: c.disc, supplies: c.supplies,
              suppliesTaxed: !!SET.supTax, taxRate: c.rate, tax: c.tax, total: c.total},
@@ -824,6 +882,8 @@ async function saveTicket(quiet){
     store.set('tlg_tickets', JSON.stringify(list.slice(0, 100)));
     T.id = t.id; T.no = t.no;
   }
+  t.id = T.id; t.no = T.no;
+  oemRecordUses(t);
   render();
   if(!quiet) toast(T.no + ' saved' + (t.tag ? ' to tag ' + t.tag : ''));
   return Object.assign(t, {id: T.id, no: T.no});
@@ -919,7 +979,7 @@ $('sClose').addEventListener('click', () => $('sendSheet').classList.remove('ope
 document.querySelectorAll('.sheet').forEach(s => s.addEventListener('click', e => { if(e.target === s) s.classList.remove('open'); }));
 
 /* ---------------- Order parts from WPS (cart only) ---------------- */
-const wpsLines = () => T.lines.filter(l => !l.labor && l.sku && !/^SAMPLE-/.test(l.sku));
+const wpsLines = () => T.lines.filter(l => !l.labor && !l.oem && l.sku && !/^SAMPLE-/.test(l.sku));
 function trackLink(num, via){
   const u = /^UP/i.test(via || '') ? 'https://www.ups.com/track?tracknum=' : (/^US|^PM/i.test(via || '') ? 'https://tools.usps.com/go/TrackConfirmAction?tLabels=' : 'https://www.fedex.com/fedextrack/?trknbr=');
   return '<a href="' + u + encodeURIComponent(num) + '" target="_blank" rel="noopener">' + esc(num) + '</a>';
@@ -1049,11 +1109,29 @@ async function loadSO(){
   SO = groupSO(entries, days);
   drawSO();
 }
+function oemSO(days){
+  const since = new Date(Date.now() - days * 86400000).toISOString();
+  return Object.values(oemAll()).map(e => {
+    const u = Object.values(e.uses || {}).filter(x => x.at >= since);
+    return Object.assign({}, e, {times: u.length, qty: u.reduce((s, x) => s + (x.qty || 0), 0),
+      lastUse: u.reduce((m, x) => x.at > m ? x.at : m, ''), ubikes: [...new Set(u.map(x => x.bike).filter(Boolean))]});
+  }).filter(e => e.times > 0).sort((a, b) => b.times - a.times || b.qty - a.qty);
+}
+function oemSOHtml(){
+  const rows = oemSO(parseInt($('soDays').value, 10));
+  if(!rows.length) return '';
+  return '<div class="sec-label">OEM parts used on jobs</div><div class="sub" style="margin-bottom:4px">Bought outside WPS, so these aren’t put in a WPS cart. Ones used on 2 or more jobs are worth buying a few of next time.</div>' +
+    rows.map(e => '<div class="sorow"><span></span><div class="sod"><b>' + esc(e.pn || 'OEM') + '</b> ' + esc(oemLabel(e)) +
+      '<small>' + e.qty + ' used · last ' + new Date(e.lastUse).toLocaleDateString() + (e.src ? ' · from ' + esc(e.src) : '') +
+      (e.ubikes.length ? ' · ' + esc(e.ubikes.slice(0, 3).join(', ')) + (e.ubikes.length > 3 ? ' +' + (e.ubikes.length - 3) : '') : '') +
+      (e.cost != null && e.cost !== '' ? ' · ' + money(e.cost) + ' each' : '') + '</small></div>' +
+      '<div class="cnt">' + e.times + '×<small>jobs</small></div></div>').join('');
+}
 function drawSO(){
   const repeat = SO.filter(g => g.times >= 2), once = SO.filter(g => g.times < 2);
   $('soCount').textContent = (LIVE ? '' : 'Sample data · ') + SO.length + ' part' + (SO.length === 1 ? '' : 's') + ' ordered for jobs';
   if(!SO.length){
-    $('soList').innerHTML = '<div class="empty"><b>Nothing yet</b>Parts show up here once they’re sent to a WPS cart from a ticket.</div>';
+    $('soList').innerHTML = '<div class="empty"><b>Nothing yet</b>Parts show up here once they’re sent to a WPS cart from a ticket.</div>' + oemSOHtml();
     $('soStock').style.display = 'none'; return;
   }
   const row = (g, i, tick) => '<div class="sorow"><input type="checkbox" data-so="' + i + '"' + (tick ? ' checked' : '') + ' aria-label="Stock ' + esc(g.sku) + '">' +
@@ -1066,7 +1144,7 @@ function drawSO(){
   let html = '';
   if(repeat.length) html += '<div class="sec-label" style="margin-top:6px">Ordered for 2 or more jobs — worth stocking</div>' + repeat.map(g => row(g, SO.indexOf(g), true)).join('');
   if(once.length) html += '<div class="sec-label">Ordered for one job</div>' + once.map(g => row(g, SO.indexOf(g), false)).join('');
-  $('soList').innerHTML = html;
+  $('soList').innerHTML = html + oemSOHtml();
   $('soStock').style.display = '';
   drawSOSum();
 }
@@ -1110,13 +1188,184 @@ $('soStock').addEventListener('click', async () => {
   $('soStock').disabled = false; $('soStock').textContent = 'Put ticked parts in a WPS stock cart';
 });
 $('soCsv').addEventListener('click', () => {
-  if(!SO.length){ toast('Nothing to save yet'); return; }
+  const oem = oemSO(parseInt($('soDays').value, 10));
+  if(!SO.length && !oem.length){ toast('Nothing to save yet'); return; }
   const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
   const rows = [['Part #','Description','Jobs ordered for','Qty used','Last ordered','Cost each','Suggested on shelf','Bikes']].concat(
-    SO.map(g => [g.sku, g.d, g.times, g.qty, new Date(g.last).toLocaleDateString(), g.cost != null ? g.cost.toFixed(2) : '', g.keep, [...g.bikes].join('; ')]));
+    SO.map(g => [g.sku, g.d, g.times, g.qty, new Date(g.last).toLocaleDateString(), g.cost != null ? g.cost.toFixed(2) : '', g.keep, [...g.bikes].join('; ')]),
+    oem.map(e => ['OEM ' + (e.pn || ''), oemLabel(e) + (e.src ? ' (from ' + e.src + ')' : ''), e.times, e.qty, new Date(e.lastUse).toLocaleDateString(),
+      e.cost != null && e.cost !== '' ? Number(e.cost).toFixed(2) : '', '', e.ubikes.join('; ')]));
   const url = URL.createObjectURL(new Blob(['﻿' + rows.map(r => r.map(q).join(',')).join('\r\n')], {type: 'text/csv'}));
   const a = document.createElement('a'); a.href = url; a.download = 'special-orders-' + $('soDays').value + 'd.csv'; a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1500);
+});
+
+/* ---------------- OEM parts ----------------
+   WPS doesn't carry OEM, so the shop types these in. Every OEM part is remembered on this iPad
+   (cost, price, where it was bought, which bikes, which jobs) so it's one tap the next time. */
+const OEM_BRANDS = ['Honda','Yamaha','Kawasaki','Suzuki','KTM','Husqvarna','GASGAS','Harley-Davidson','Indian','Polaris',
+  'Can-Am','Beta','Sherco','Triumph','BMW','Ducati','Aprilia','Royal Enfield','Kymco','Other'];
+const oemKey = (brand, pn, d) => brand + '|' + (pn ? pn.toUpperCase().replace(/\s+/g, '') : '#' + d.toLowerCase().trim());
+function oemAll(){ try{ return JSON.parse(store.get('tlg_oem') || '{}'); }catch(e){ return {}; } }
+function oemPut(db){ store.set('tlg_oem', JSON.stringify(db)); }
+function oemRemember(o, bike){
+  const db = oemAll(), k = oemKey(o.brand, o.pn, o.d);
+  const e = db[k] || {brand: o.brand, pn: o.pn, d: o.d, bikes: [], uses: {}};
+  Object.assign(e, {brand: o.brand, pn: o.pn, d: o.d, cost: o.cost, price: o.price, src: o.src, last: new Date().toISOString()});
+  if(bike && !e.bikes.includes(bike)) e.bikes.unshift(bike);
+  e.bikes = e.bikes.slice(0, 12);
+  db[k] = e; oemPut(db);
+}
+function oemRecordUses(t){
+  // One use per saved ticket, kept current if the ticket is saved again
+  const db = oemAll();
+  Object.values(db).forEach(e => { if(e.uses) delete e.uses[t.id]; });
+  t.lines.filter(l => l.oem).forEach(l => {
+    const e = l.okey && db[l.okey]; if(!e) return;
+    e.uses = e.uses || {};
+    e.uses[t.id] = {qty: l.qty, at: new Date().toISOString(), bike: t.bike, no: t.no};
+  });
+  oemPut(db);
+}
+const oemUses = e => Object.keys(e.uses || {}).length;
+function guessBrand(txt){
+  const s = (txt || '').toLowerCase();
+  if(/harley|\bh-d\b/.test(s)) return 'Harley-Davidson';
+  if(/gas ?gas/.test(s)) return 'GASGAS';
+  if(/can-?am/.test(s)) return 'Can-Am';
+  if(/royal enfield/.test(s)) return 'Royal Enfield';
+  if(/husky|husqvarna/.test(s)) return 'Husqvarna';
+  return OEM_BRANDS.find(b => b !== 'Other' && s.indexOf(b.toLowerCase()) >= 0) || '';
+}
+const bikeText = () => $('cBike').value.trim() || (vehicle ? vehicle.label : '');
+function oemSearch(q, brand){
+  const words = (q || '').toLowerCase().split(/\s+/).filter(Boolean), bike = bikeText().toLowerCase();
+  return Object.entries(oemAll()).map(([k, e]) => Object.assign({k}, e))
+    .filter(e => (!brand || e.brand === brand) && words.every(w => (e.brand + ' ' + (e.pn || '') + ' ' + e.d).toLowerCase().includes(w)))
+    .map(e => Object.assign(e, {here: bike && (e.bikes || []).some(b => b.toLowerCase() === bike)}))
+    .sort((a, b) => (b.here - a.here) || (oemUses(b) - oemUses(a)) || String(b.last).localeCompare(String(a.last)));
+}
+function oemLabel(e){ return (e.brand && e.brand !== 'Other' && e.d.toUpperCase().indexOf(e.brand.toUpperCase()) !== 0 ? e.brand + ' ' : '') + e.d; }
+
+function addOemLine(o){
+  const desc = oemLabel(o);
+  const ex = T.lines.find(l => l.oem && l.brand === o.brand && (o.pn ? l.sku === o.pn : l.d === desc));
+  if(ex){ ex.qty += o.qty || 1; toast(desc + ' × ' + ex.qty); render(); return; }
+  T.lines.push({sku: o.pn || '', d: desc, price: o.price || 0, qty: o.qty || 1, ovr: '', tax: true, labor: false, oem: true,
+    okey: oemKey(o.brand, o.pn, o.d),
+    brand: o.brand, src: o.src || '', cost: o.cost == null || o.cost === '' ? null : o.cost,
+    costSrc: o.cost == null || o.cost === '' ? '' : 'OEM' + (o.src ? ' from ' + o.src : ''), fresh: true});
+  toast(desc + ' added'); render();
+}
+
+let oPriceTouched = false;
+function oMath(){
+  const c = parseFloat($('oCost').value), p = parseFloat($('oPrice').value);
+  if(!(c > 0) || !(p >= 0) || $('oPrice').value === ''){ $('oMath').textContent = c > 0 ? '' : 'Add your cost to see markup and margin.'; return; }
+  $('oMath').innerHTML = '<span class="' + (p < c ? 'neg' : '') + '">Markup ' + pctTxt((p - c) / c * 100) + ' · margin ' + (p ? pctTxt((p - c) / p * 100) : '—') + ' · profit ' + money((p - c) * (parseInt($('oQty').value, 10) || 1)) + '</span>';
+}
+function oFill(e){
+  $('oBrand').value = e.brand; $('oPn').value = e.pn || ''; $('oDesc').value = e.d;
+  $('oCost').value = e.cost == null ? '' : e.cost; $('oPrice').value = e.price == null ? '' : e.price;
+  $('oSrc').value = e.src || ''; $('oQty').value = 1; oPriceTouched = true; oMath(); drawOemSaved();
+}
+function drawOemSaved(){
+  const brand = $('oBrand').value === 'Other' ? '' : $('oBrand').value;
+  const q = [$('oPn').value, $('oDesc').value].join(' ').trim();
+  let rows = oemSearch(q, brand);
+  if(!rows.length && q) rows = oemSearch('', brand);
+  const total = Object.keys(oemAll()).length;
+  $('oSavedHead').style.display = total ? '' : 'none';
+  $('oSaved').innerHTML = !total ? '' : rows.length ? rows.slice(0, 12).map(e =>
+    '<button class="tk otk" data-k="' + esc(e.k) + '"><span>' + (e.pn ? '<b style="color:var(--acc);font-size:12px">' + esc(e.pn) + '</b> ' : '') + esc(oemLabel(e)) +
+      '<small>' + (e.here ? 'Used on this bike · ' : '') + (oemUses(e) ? oemUses(e) + ' job' + (oemUses(e) === 1 ? '' : 's') + ' · ' : '') +
+      (e.cost != null && e.cost !== '' ? 'cost ' + money(e.cost) + ' · ' : '') + (e.src ? esc(e.src) : '') + '</small></span>' +
+      '<b>' + money(e.price) + '</b><span class="rm" data-rm="' + esc(e.k) + '" aria-label="Forget this part">&times;</span></button>').join('')
+    : '<div class="sub">No saved ' + esc(brand || 'OEM') + ' parts yet.</div>';
+}
+function openOem(prefill){
+  $('oBrand').innerHTML = '<option value="">Pick brand</option>' + OEM_BRANDS.map(b => '<option>' + b + '</option>').join('');
+  ['oPn','oDesc','oCost','oPrice','oSrc'].forEach(id => $(id).value = '');
+  $('oQty').value = 1; oPriceTouched = false;
+  $('oBrand').value = guessBrand(bikeText());
+  const srcs = [...new Set(Object.values(oemAll()).map(e => e.src).filter(Boolean))];
+  $('oSrcList').innerHTML = srcs.map(s => '<option value="' + esc(s) + '">').join('');
+  $('oSite').style.display = SET.oemSite ? '' : 'none';
+  if(prefill) $('oDesc').value = prefill;
+  oMath(); drawOemSaved();
+  $('oemSheet').classList.add('open');
+}
+$('oemBtn').addEventListener('click', () => openOem(''));
+$('oClose').addEventListener('click', () => $('oemSheet').classList.remove('open'));
+$('oBrand').addEventListener('change', drawOemSaved);
+$('oPn').addEventListener('input', drawOemSaved);
+$('oDesc').addEventListener('input', drawOemSaved);
+$('oCost').addEventListener('input', () => {
+  const c = parseFloat($('oCost').value);
+  if(!oPriceTouched) $('oPrice').value = c > 0 ? (Math.round(c * (1 + (parseFloat(SET.oemMk) || 0) / 100) * 100) / 100).toFixed(2) : '';
+  oMath();
+});
+$('oPrice').addEventListener('input', () => { oPriceTouched = $('oPrice').value !== ''; oMath(); });
+$('oQty').addEventListener('input', oMath);
+$('oSaved').addEventListener('click', e => {
+  const rm = e.target.closest('[data-rm]');
+  if(rm){
+    e.stopPropagation();
+    const db = oemAll(), x = db[rm.dataset.rm];
+    if(x && confirm('Forget ' + oemLabel(x) + (x.pn ? ' (' + x.pn + ')' : '') + '? It comes off the saved list only, not any ticket.')){ delete db[rm.dataset.rm]; oemPut(db); drawOemSaved(); }
+    return;
+  }
+  const b = e.target.closest('.otk'); if(!b) return;
+  const x = oemAll()[b.dataset.k]; if(x) oFill(x);
+});
+$('oAdd').addEventListener('click', () => {
+  const o = {brand: $('oBrand').value, pn: $('oPn').value.trim().toUpperCase(), d: $('oDesc').value.trim(),
+    cost: $('oCost').value === '' ? null : parseFloat($('oCost').value), price: parseFloat($('oPrice').value),
+    src: $('oSrc').value.trim(), qty: Math.max(1, parseInt($('oQty').value, 10) || 1)};
+  if(!o.brand){ toast('Pick the brand'); return; }
+  if(!o.d){ toast('Add a description, like oil filter'); return; }
+  if(isNaN(o.price)){ toast('Put in what to charge'); return; }
+  oemRemember(o, bikeText());
+  addOemLine(o);
+  $('oemSheet').classList.remove('open');
+});
+function openTab(url){ const w = window.open(url, '_blank', 'noopener'); if(!w) location.href = url; }
+$('oDiagram').addEventListener('click', () => {
+  let bike = bikeText(); const brand = $('oBrand').value;
+  if(brand && brand !== 'Other' && bike.toLowerCase().indexOf(brand.toLowerCase()) < 0) bike = brand + ' ' + bike;
+  if(!bike.trim()){ toast('Put the bike on the ticket, or pick the brand'); return; }
+  openTab('https://www.google.com/search?q=' + encodeURIComponent((bike + ' OEM parts diagram ' + $('oDesc').value).trim()));
+});
+$('oFind').addEventListener('click', () => {
+  const pn = $('oPn').value.trim();
+  if(!pn){ toast('Type the part # first'); return; }
+  const brand = $('oBrand').value;
+  openTab('https://www.google.com/search?q=' + encodeURIComponent(((brand && brand !== 'Other' ? brand + ' ' : '') + pn + ' OEM part').trim()));
+});
+$('oSite').addEventListener('click', () => {
+  let u = (SET.oemSite || '').trim(); if(!u) return;
+  if(!/^https?:\/\//i.test(u)) u = 'https://' + u;
+  openTab(u);
+});
+
+/* Saved OEM parts show up at the top of the parts list when they match the search */
+let oemHitRows = [];
+function drawOemHits(q){
+  oemHitRows = q.length >= 2 ? oemSearch(q, '').slice(0, 6) : [];
+  $('oemHits').innerHTML = !oemHitRows.length ? '' :
+    '<div class="sec-label">Your saved OEM parts</div>' + oemHitRows.map((e, i) =>
+      '<button class="part" data-oi="' + i + '"><span class="pn">' + esc(e.pn || '—') + '</span>' +
+      '<span class="d">' + esc(oemLabel(e)) + '<small><span class="oemtag">OEM</span>' +
+        (e.here ? 'used on this bike · ' : '') + (oemUses(e) ? oemUses(e) + ' job' + (oemUses(e) === 1 ? '' : 's') : 'saved') + (e.src ? ' · ' + esc(e.src) : '') + '</small></span>' +
+      '<span class="pr">' + money(e.price) + '<small>charge</small></span></button>').join('') +
+    '<button class="more" id="oemMore">+ A different OEM part</button>';
+}
+$('oemHits').addEventListener('click', e => {
+  if(e.target.closest('#oemMore')){ openOem($('q').value.trim()); return; }
+  const b = e.target.closest('[data-oi]'); if(!b) return;
+  const x = oemHitRows[+b.dataset.oi]; if(!x) return;
+  oemRemember(Object.assign({}, x), bikeText());
+  addOemLine(Object.assign({}, x, {qty: 1}));
 });
 
 /* ---------------- PDF ---------------- */
@@ -1246,7 +1495,7 @@ function buildPdf(d){
 function pdfData(){
   const c = calc();
   const v = id => $(id).value.trim();
-  const rows = T.lines.map(l => ({bike: '', pn: l.sku || (l.labor ? 'Labor' : ''), d: l.d, qty: l.qty, unit: money(unitSell(l)), amt: money(lineTotal(l))}));
+  const rows = T.lines.map(l => ({bike: '', pn: l.sku || (l.labor ? 'Labor' : (l.oem ? 'OEM' : '')), d: l.d, qty: l.qty, unit: money(unitSell(l)), amt: money(lineTotal(l))}));
   const cust = [['Customer', v('cName')], ['Phone', v('cPhone')], ['Bike', v('cBike')], ['Miles / hours', v('cMiles')], ['Job notes', v('cNotes')]].filter(x => x[1]);
   const tots = [['Parts', money(c.partsSub)], ['Labor', money(c.laborSub)]];
   if(c.disc) tots.push(['Less ' + c.pct + '% on parts', '-' + money(c.disc)]);
@@ -1281,6 +1530,7 @@ $('gearBtn').addEventListener('click', () => {
   $('sName').value = SET.name; $('sPhone').value = SET.phone; $('sAddr').value = SET.addr; $('sTax').value = SET.tax;
   $('sLabor').value = SET.labor; $('sSupOn').checked = !!SET.supOn; $('sSupPct').value = SET.supPct; $('sSupCap').value = SET.supCap;
   $('sSupTax').checked = !!SET.supTax; $('sPolicy').value = SET.policy; $('sWorker').value = SET.worker; $('sKey').value = SET.key;
+  $('sOemMk').value = SET.oemMk; $('sOemSite').value = SET.oemSite || '';
   $('sStatus').style.display = 'none';
   $('setSheet').classList.add('open');
 });
@@ -1306,6 +1556,8 @@ $('sSave').addEventListener('click', async () => {
   SET.supOn = $('sSupOn').checked; SET.supPct = parseFloat($('sSupPct').value) || 0; SET.supCap = parseFloat($('sSupCap').value) || 0;
   SET.supTax = $('sSupTax').checked; SET.policy = $('sPolicy').value.trim();
   SET.worker = $('sWorker').value.trim(); SET.key = $('sKey').value;
+  SET.oemMk = parseFloat($('sOemMk').value); if(isNaN(SET.oemMk)) SET.oemMk = 30;
+  SET.oemSite = $('sOemSite').value.trim();
   saveSet(); $('setSheet').classList.remove('open');
   $('taxRate').value = SET.tax;
   applyBrand(); renderLabor(); await connect(); render();
