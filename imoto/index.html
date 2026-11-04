@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>iMotorsports — Bikes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="otd-core.js"></script>
+<style>
+.list{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
+.bk{display:flex;flex-direction:column;gap:8px;text-decoration:none;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+.bk:hover{border-color:var(--acc)}
+.bk h3{font-size:19px}
+.price{font:800 26px/1 "Barlow Condensed",sans-serif}
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+</style>
+</head>
+<body>
+<header class="top"><div class="in">
+  <div><div class="word">i<span>Motor</span>sports</div><div class="sub">Chicago, IL · Florida</div></div>
+  <nav><a href="index.html" aria-current="page">All bikes</a><a href="otd.html">Sales desk</a><a href="settings.html">Settings</a></nav>
+</div></header>
+<div class="demo">Demo · sample bikes and placeholder rates, not real prices, taxes or fees</div>
+<main class="wrap">
+  <div class="filters">
+    <span class="small muted">Prices shown out the door, for a buyer registering in</span>
+    <div class="seg" role="group" aria-label="Buyer state"><button type="button" data-b="IL">Illinois</button><button type="button" data-b="FL">Florida</button></div>
+    <div class="seg" role="group" aria-label="Show"><button type="button" data-c="all">All</button><button type="button" data-c="new">New</button><button type="button" data-c="used">Pre-owned</button></div>
+  </div>
+  <div class="list" id="list"></div>
+</main>
+<script>
+const I = window.IMOTO, $ = id => document.getElementById(id);
+let buyer = 'IL', cond = 'all';
+try { buyer = localStorage.getItem('imoto_buyer') || 'IL'; } catch (e) {}
+function render() {
+  const s = I.settings();
+  document.querySelectorAll('[data-b]').forEach(x => x.setAttribute('aria-pressed', x.dataset.b === buyer));
+  document.querySelectorAll('[data-c]').forEach(x => x.setAttribute('aria-pressed', x.dataset.c === cond));
+  $('list').innerHTML = I.BIKES.filter(b => cond === 'all' || b.cond === cond).map(b => {
+    const st = I.status(b.stock), r = I.otd(b, buyer, s);
+    return '<a class="bk" href="bike.html?stock=' + b.stock + '"><div class="ph">' + I.bikeArt(b) + '</div>' +
+      '<div class="row"><span class="badge ' + st + '">' + ({ available: 'Available', pending: 'Sale pending', sold: 'Sold' })[st] + '</span><span class="badge cond">' + (b.cond === 'new' ? 'New' : 'Pre-owned') + '</span></div>' +
+      '<h3>' + I.esc(I.title(b)) + '</h3><div class="small muted">' + I.esc(s.stores[b.store].name) + (b.miles != null ? ' · ' + b.miles.toLocaleString() + ' mi' : '') + '</div>' +
+      '<div><span class="price">' + I.money0(r.total) + '</span> <span class="small muted">out the door</span></div></a>';
+  }).join('');
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-b]'), c = e.target.closest('[data-c]');
+  if (b) { buyer = b.dataset.b; try { localStorage.setItem('imoto_buyer', buyer); } catch (er) {} render(); }
+  if (c) { cond = c.dataset.c; render(); }
+});
+render();
+</script>
+</body>
+</html>

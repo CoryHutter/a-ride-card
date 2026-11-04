@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>iMotorsports — Out-the-Door Price</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="otd-core.js"></script>
+<style>
+.search{display:flex;gap:8px;flex-wrap:wrap}
+.search input{flex:1 1 220px;font-size:18px;text-transform:uppercase;letter-spacing:.04em}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.chip{border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:999px;padding:7px 12px;font:600 13px inherit;font-family:inherit;cursor:pointer;min-height:36px}
+.head{display:grid;grid-template-columns:200px minmax(0,1fr);gap:16px;align-items:start}
+@media(max-width:620px){.head{grid-template-columns:1fr}}
+.feat{margin:6px 0 0;padding-left:18px;font-size:13.5px;color:var(--muted)}
+.state h2{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.state h2 small{font:500 12.5px Inter,sans-serif;text-transform:none;letter-spacing:0;color:var(--muted)}
+.quote{display:flex;flex-direction:column;gap:10px}
+.quote textarea{width:100%;min-height:200px;font:13px/1.45 ui-monospace,Menlo,monospace;color:var(--ink);background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:10px}
+</style>
+</head>
+<body>
+<header class="top"><div class="in">
+  <div><div class="word">i<span>Motor</span>sports</div><div class="sub">Out-the-door price · sales desk</div></div>
+  <nav><a href="otd.html" aria-current="page">Sales desk</a><a href="index.html">Website</a><a href="settings.html">Settings</a></nav>
+</div></header>
+<div class="demo">Demo · sample bikes and placeholder rates, not real prices, taxes or fees</div>
+
+<main class="wrap">
+  <section class="card">
+    <h2>Look up a bike</h2>
+    <form class="search" id="f" style="margin-top:10px">
+      <input id="q" placeholder="Stock number, e.g. A11776" autocomplete="off" aria-label="Stock number">
+      <button class="btn primary" type="submit">Get price</button>
+    </form>
+    <div class="chips" id="chips"></div>
+  </section>
+  <div id="out"></div>
+</main>
+
+<script>
+const I = window.IMOTO, $ = id => document.getElementById(id);
+let cur = null, quoteState = 'IL';
+
+$('chips').innerHTML = I.BIKES.map(b => '<button class="chip" type="button" data-s="' + b.stock + '">' + b.stock + ' · ' + I.esc(b.year + ' ' + b.model) + '</button>').join('');
+$('chips').addEventListener('click', e => { const c = e.target.closest('.chip'); if (c) { $('q').value = c.dataset.s; show(c.dataset.s); } });
+$('f').addEventListener('submit', e => { e.preventDefault(); show($('q').value); });
+
+function table(r) {
+  return '<table class="otd">' + r.lines.map(l =>
+      '<tr class="' + l.kind + '"><td>' + I.esc(l.label) + '<span class="note">' + I.esc(l.note) + '</span></td><td>' + I.money(l.amt) + '</td></tr>').join('') +
+    '<tr class="sub"><td>Subtotal before tax</td><td>' + I.money(r.sub) + '</td></tr>' +
+    '<tr><td>Sales tax<span class="note">' + r.rate.toFixed(2) + '% for ' + I.art(r.buyer.name) + ' buyer (placeholder rate)</span></td><td>' + I.money(r.tax) + '</td></tr>' +
+    '<tr><td>Title</td><td>' + I.money(r.title) + '</td></tr>' +
+    '<tr><td>Registration</td><td>' + I.money(r.reg) + '</td></tr>' +
+    '<tr class="total"><td>Out the door</td><td>' + I.money(r.total) + '</td></tr></table>';
+}
+
+function show(stock) {
+  const b = I.find(stock);
+  if (!b) { $('out').innerHTML = '<div class="card"><h3>No bike with stock number “' + I.esc(stock) + '”</h3><p class="muted">Check the number, or tap one of the sample bikes above.</p></div>'; cur = null; return; }
+  cur = b;
+  const s = I.settings(), st = I.status(b.stock);
+  const il = I.otd(b, 'IL', s), fl = I.otd(b, 'FL', s), reb = I.activeRebates(b, s);
+  $('out').innerHTML =
+    '<section class="card head"><div class="ph">' + I.bikeArt(b) + '</div><div>' +
+      '<div class="row"><span class="badge ' + st + '">' + ({ available: 'Available', pending: 'Sale pending', sold: 'Sold' })[st] + '</span>' +
+      '<span class="badge cond">' + (b.cond === 'new' ? 'New' : 'Pre-owned') + '</span><span class="small muted">Stock ' + b.stock + ' · at the ' + I.esc(s.stores[b.store].name) + '</span></div>' +
+      '<h1 style="margin-top:8px">' + I.esc(I.title(b)) + '</h1>' +
+      '<div class="muted small">' + [b.color, b.miles != null ? b.miles.toLocaleString() + ' miles' : '', b.vin6 ? 'VIN …' + b.vin6 : ''].filter(Boolean).join(' · ') + '</div>' +
+      '<ul class="feat">' + (b.features || []).map(f => '<li>' + I.esc(f) + '</li>').join('') + '</ul>' +
+      '<div class="small" style="margin-top:8px"><b>Rebates in effect:</b> ' + (reb.length ? reb.map(r => I.esc(r.label) + ' ' + I.money0(r.amount) + (r.ends ? ' (ends ' + I.fmtDate(r.ends) + ')' : '')).join(', ') : 'none for this bike') + '</div>' +
+      '<div class="row" style="margin-top:12px"><a class="btn" href="bike.html?stock=' + b.stock + '">Customer page</a>' +
+      '<label style="flex-direction:row;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:14px;color:var(--ink)">Status <select id="stSel">' +
+        ['available', 'pending', 'sold'].map(x => '<option value="' + x + '"' + (x === st ? ' selected' : '') + '>' + ({ available: 'Available', pending: 'Sale pending', sold: 'Sold' })[x] + '</option>').join('') + '</select></label></div>' +
+    '</div></section>' +
+    '<div class="grid2">' +
+      '<section class="card state"><h2>Illinois buyer <small>registers in IL</small></h2>' + table(il) + '</section>' +
+      '<section class="card state"><h2>Florida buyer <small>registers in FL</small></h2>' + table(fl) + '</section>' +
+    '</div>' +
+    '<p class="disc">Estimate. Final taxes and fees are confirmed at signing. Difference between the two: ' + I.money(Math.abs(il.total - fl.total)) + '.</p>' +
+    '<section class="card quote"><h2>Text this quote</h2>' +
+      '<div class="row"><span class="small muted">Buyer registers in</span><div class="seg" role="group" aria-label="Quote for"><button type="button" data-q="IL" aria-pressed="' + (quoteState === 'IL') + '">Illinois</button><button type="button" data-q="FL" aria-pressed="' + (quoteState === 'FL') + '">Florida</button></div></div>' +
+      '<label>Customer mobile <input id="ph" inputmode="tel" placeholder="(555) 555-0100"></label>' +
+      '<textarea id="qt" aria-label="Quote text"></textarea>' +
+      '<div class="row"><button class="btn primary" type="button" id="sms">Open in Messages</button><button class="btn" type="button" id="cp">Copy</button></div></section>';
+  $('stSel').addEventListener('change', e => { I.setStatus(b.stock, e.target.value); show(b.stock); toast('Marked ' + e.target.selectedOptions[0].textContent.toLowerCase() + ' on the website (this device, demo)'); });
+  document.querySelectorAll('[data-q]').forEach(x => x.addEventListener('click', () => { quoteState = x.dataset.q; show(b.stock); }));
+  $('qt').value = quoteText(b, quoteState);
+  $('sms').addEventListener('click', () => { const d = $('ph').value.replace(/[^0-9+]/g, ''); location.href = 'sms:' + d + '&body=' + encodeURIComponent($('qt').value); });
+  $('cp').addEventListener('click', () => { navigator.clipboard ? navigator.clipboard.writeText($('qt').value).then(() => toast('Copied')) : ($('qt').select(), document.execCommand('copy'), toast('Copied')); });
+}
+
+function quoteText(b, st) {
+  const r = I.otd(b, st), out = [];
+  out.push('iMotorsports quote · Stock ' + b.stock);
+  out.push(I.title(b) + (b.cond === 'used' && b.miles != null ? ' · ' + b.miles.toLocaleString() + ' mi' : ''));
+  out.push('For ' + I.art(r.buyer.name) + ' buyer');
+  out.push('');
+  r.lines.forEach(l => out.push(l.label + ': ' + I.money(l.amt)));
+  out.push('Sales tax (' + r.rate.toFixed(2) + '%): ' + I.money(r.tax));
+  out.push('Title: ' + I.money(r.title));
+  out.push('Registration: ' + I.money(r.reg));
+  out.push('OUT THE DOOR: ' + I.money(r.total));
+  out.push('');
+  out.push('Estimate. Final taxes and fees are confirmed at signing.');
+  out.push('See the bike: ' + location.href.replace(/[^/]*([?#].*)?$/, '') + 'bike.html?stock=' + b.stock);
+  return out.join('\n');
+}
+function toast(m) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = m; document.body.appendChild(t); setTimeout(() => t.remove(), 2200); }
+const p = new URLSearchParams(location.search).get('stock'); if (p) { $('q').value = p; show(p); }
+</script>
+</body>
+</html>

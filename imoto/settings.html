@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>iMotorsports — Price Settings</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="otd-core.js"></script>
+<style>
+.tbl{width:100%;border-collapse:collapse;margin-top:10px}
+.tbl th{text-align:left;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:6px 6px;border-bottom:1px solid var(--line)}
+.tbl td{padding:6px;border-bottom:1px solid var(--line);vertical-align:middle}
+.tbl input{width:100%;min-width:80px}
+.box{overflow-x:auto}
+.box table{min-width:620px}
+.x{border:0;background:none;color:var(--muted);font-size:22px;cursor:pointer;min-width:44px;min-height:44px}
+.bar{position:sticky;bottom:0;background:var(--bg);padding:12px 0;display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--line)}
+</style>
+</head>
+<body>
+<header class="top"><div class="in">
+  <div><div class="word">i<span>Motor</span>sports</div><div class="sub">Price settings · manager</div></div>
+  <nav><a href="otd.html">Sales desk</a><a href="index.html">Website</a><a href="settings.html" aria-current="page">Settings</a></nav>
+</div></header>
+<div class="demo">Every number below is a placeholder. Enter real rates from the finance office or the state revenue site, with the date you checked.</div>
+<main class="wrap">
+  <section class="card"><h2>Buyer's state: tax, title &amp; registration</h2>
+    <p class="small muted">Tax and title follow where the buyer registers the bike, not which store sells it. Confirm the out-of-state rules with the finance office.</p>
+    <div class="box"><table class="tbl"><thead><tr><th>State</th><th>State tax %</th><th>Local / county %</th><th>Title $</th><th>Registration $</th><th>Last checked</th></tr></thead><tbody id="buyers"></tbody></table></div></section>
+
+  <section class="card"><h2>Stores: doc fee</h2>
+    <div class="box"><table class="tbl"><thead><tr><th>Store</th><th>Doc fee $</th><th>Last checked</th></tr></thead><tbody id="stores"></tbody></table></div></section>
+
+  <section class="card"><h2>Freight &amp; setup, new bikes, by make</h2>
+    <div class="box"><table class="tbl"><thead><tr><th>Make</th><th>Freight $</th><th>Setup / PDI $</th></tr></thead><tbody id="makes"></tbody></table></div>
+    <div class="row" style="margin-top:12px"><label style="max-width:260px">Pre-owned inspection &amp; prep $<input id="usedPrep" inputmode="decimal"></label>
+      <label style="max-width:260px">Payment calculator default rate %<input id="apr" inputmode="decimal"></label>
+      <label style="max-width:260px">Shop text number<input id="shopPhone" inputmode="tel" placeholder="for “Text us” buttons"></label></div></section>
+
+  <section class="card"><h2>Rebates</h2>
+    <p class="small muted">New bikes only. A rebate drops off by itself after its end date. Leave model blank to cover every model of that make.</p>
+    <div class="box"><table class="tbl"><thead><tr><th>Make</th><th>Model contains</th><th>Name shown</th><th>Amount $</th><th>Ends</th><th></th></tr></thead><tbody id="rebates"></tbody></table></div>
+    <button class="btn" type="button" id="addReb" style="margin-top:10px">+ Add rebate</button></section>
+
+  <div class="bar"><button class="btn primary" type="button" id="save">Save</button><button class="btn" type="button" id="reset">Reset to placeholders</button>
+    <span class="small muted" style="align-self:center">Saved on this device for the demo. The live version saves for everyone.</span></div>
+</main>
+<script>
+const I = window.IMOTO, $ = id => document.getElementById(id);
+let S = I.settings();
+const inp = (path, v, type) => '<input data-p="' + path + '" value="' + I.esc(v == null ? '' : v) + '"' + (type === 'date' ? ' type="date"' : type === 'num' ? ' inputmode="decimal"' : '') + '>';
+function draw() {
+  $('buyers').innerHTML = Object.keys(S.buyers).map(k => { const b = S.buyers[k]; return '<tr><td><b>' + I.esc(b.name) + '</b></td><td>' + inp('buyers.' + k + '.tax', b.tax, 'num') + '</td><td>' + inp('buyers.' + k + '.local', b.local, 'num') + '</td><td>' + inp('buyers.' + k + '.title', b.title, 'num') + '</td><td>' + inp('buyers.' + k + '.reg', b.reg, 'num') + '</td><td>' + inp('buyers.' + k + '.checked', b.checked, 'date') + '</td></tr>'; }).join('');
+  $('stores').innerHTML = Object.keys(S.stores).map(k => { const s = S.stores[k]; return '<tr><td><b>' + I.esc(s.name) + '</b></td><td>' + inp('stores.' + k + '.doc', s.doc, 'num') + '</td><td>' + inp('stores.' + k + '.checked', s.checked, 'date') + '</td></tr>'; }).join('');
+  $('makes').innerHTML = Object.keys(S.makes).sort().map(k => '<tr><td><b>' + I.esc(k) + '</b></td><td>' + inp('makes.' + k + '.freight', S.makes[k].freight, 'num') + '</td><td>' + inp('makes.' + k + '.setup', S.makes[k].setup, 'num') + '</td></tr>').join('');
+  $('rebates').innerHTML = S.rebates.map((r, i) => '<tr><td>' + inp('rebates.' + i + '.make', r.make) + '</td><td>' + inp('rebates.' + i + '.model', r.model) + '</td><td>' + inp('rebates.' + i + '.label', r.label) + '</td><td>' + inp('rebates.' + i + '.amount', r.amount, 'num') + '</td><td>' + inp('rebates.' + i + '.ends', r.ends, 'date') + '</td><td><button class="x" type="button" data-del="' + i + '" aria-label="Remove rebate">×</button></td></tr>').join('');
+  $('usedPrep').value = S.usedPrep; $('apr').value = S.apr; $('shopPhone').value = S.shopPhone || '';
+}
+document.addEventListener('input', e => {
+  const p = e.target.dataset.p; if (!p) return;
+  const parts = p.split('.'); let o = S; for (let i = 0; i < parts.length - 1; i++) o = o[parts[i]];
+  const k = parts[parts.length - 1], numeric = ['tax', 'local', 'title', 'reg', 'doc', 'freight', 'setup', 'amount'].includes(k);
+  o[k] = numeric ? (parseFloat(e.target.value) || 0) : e.target.value;
+});
+document.addEventListener('click', e => { const d = e.target.closest('[data-del]'); if (d) { S.rebates.splice(+d.dataset.del, 1); draw(); } });
+$('addReb').addEventListener('click', () => { S.rebates.push({ make: 'Yamaha', model: '', label: 'New rebate', amount: 0, ends: '' }); draw(); });
+$('save').addEventListener('click', () => {
+  S.usedPrep = parseFloat($('usedPrep').value) || 0; S.apr = parseFloat($('apr').value) || 0; S.shopPhone = $('shopPhone').value.trim();
+  I.saveSettings(S); toast('Saved. The sales desk and website use these numbers now.');
+});
+$('reset').addEventListener('click', () => { if (!confirm('Put every number back to the demo placeholders?')) return; I.resetSettings(); S = I.settings(); draw(); toast('Back to placeholders'); });
+function toast(m) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = m; document.body.appendChild(t); setTimeout(() => t.remove(), 2400); }
+draw();
+</script>
+</body>
+</html>

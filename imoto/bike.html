@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>iMotorsports — Bike</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="otd-core.js"></script>
+<style>
+.hero{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:16px}
+@media(max-width:760px){.hero{grid-template-columns:1fr}}
+.big{font:800 44px/1 "Barlow Condensed",sans-serif}
+details summary{cursor:pointer;font-weight:600;color:var(--acc);min-height:44px;display:flex;align-items:center}
+.calc{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:10px}
+.result{background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-top:12px}
+.result b{font:800 28px/1 "Barlow Condensed",sans-serif}
+.ck{display:grid;grid-template-columns:76px minmax(0,1fr);gap:10px;align-items:baseline;padding:8px 0;border-top:1px solid var(--line)}
+.ck:first-child{border-top:0}
+.ck small{display:block;color:var(--muted);font-size:12.5px}
+.sum{font-weight:600;padding:10px 12px;border-radius:8px;background:var(--soft);border:1px solid var(--line)}
+.sides{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+@media(max-width:520px){.sides{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.side{aspect-ratio:4/3;border-radius:8px;border:1px solid var(--line);background:var(--soft);display:grid;place-items:center;font-size:12px;color:var(--muted);text-align:center}
+.video{aspect-ratio:16/9;border-radius:10px;border:1px dashed var(--line);background:var(--soft);display:grid;place-items:center;color:var(--muted);text-align:center;padding:16px}
+.ok{color:var(--good);font-weight:600}
+.stack{display:flex;flex-direction:column;gap:16px}
+</style>
+</head>
+<body>
+<header class="top"><div class="in">
+  <div><div class="word">i<span>Motor</span>sports</div><div class="sub">Chicago, IL · Florida</div></div>
+  <nav><a href="index.html">All bikes</a><a href="otd.html">Sales desk</a></nav>
+</div></header>
+<div class="demo">Demo · sample bikes and placeholder rates, not real prices, taxes or fees</div>
+<main class="wrap" id="app"></main>
+
+<script>
+const I = window.IMOTO, $ = id => document.getElementById(id);
+const stock = new URLSearchParams(location.search).get('stock') || I.BIKES[0].stock;
+let buyer = 'IL';
+try { buyer = localStorage.getItem('imoto_buyer') || 'IL'; } catch (e) {}
+
+function render() {
+  const b = I.find(stock);
+  if (!b) { $('app').innerHTML = '<div class="card"><h1>Bike not found</h1><p><a href="index.html">See all bikes</a></p></div>'; return; }
+  document.title = 'iMotorsports — ' + I.title(b);
+  const s = I.settings(), st = I.status(b.stock), r = I.otd(b, buyer, s);
+  const stLabel = { available: 'Available', pending: 'Sale pending', sold: 'Sold' }[st];
+  const tel = (s.shopPhone || '').replace(/[^0-9+]/g, '');
+  $('app').innerHTML =
+    '<section class="hero">' +
+      '<div class="ph">' + I.bikeArt(b) + '</div>' +
+      '<div class="card stack" style="gap:10px">' +
+        '<div class="row"><span class="badge ' + st + '">' + stLabel + '</span><span class="badge cond">' + (b.cond === 'new' ? 'New' : 'Pre-owned') + '</span></div>' +
+        '<h1>' + I.esc(I.title(b)) + '</h1>' +
+        '<div class="muted small">Stock ' + b.stock + ' · ' + I.esc(s.stores[b.store].name) + (b.miles != null ? ' · ' + b.miles.toLocaleString() + ' miles' : '') + (b.color ? ' · ' + I.esc(b.color) : '') + '</div>' +
+        '<div><div class="small muted">Your out-the-door price</div><div class="big" id="otdBig">' + I.money(r.total) + '</div></div>' +
+        '<div class="row"><span class="small muted">I’ll register it in</span><div class="seg" role="group" aria-label="Where will you register the bike?">' +
+          ['IL', 'FL'].map(k => '<button type="button" data-b="' + k + '" aria-pressed="' + (k === buyer) + '">' + s.buyers[k].name + '</button>').join('') + '</div></div>' +
+        '<div class="row">' +
+          (st === 'available' ? '<button class="btn primary" type="button" id="dep">Hold it with a refundable deposit</button>' : '<span class="small muted">' + (st === 'pending' ? 'Someone has put a deposit on this bike.' : 'This bike has sold.') + '</span>') +
+          '<a class="btn" href="sms:' + I.esc(tel) + '&body=' + encodeURIComponent('Hi, I’m interested in stock ' + b.stock + ', the ' + I.title(b) + '.') + '">Text us about this bike</a></div>' +
+      '</div>' +
+    '</section>' +
+
+    '<div class="grid2">' +
+      '<section class="card"><h2>Price breakdown</h2>' +
+        '<details open><summary>Every line, for ' + I.art(r.buyer.name) + ' buyer</summary><table class="otd">' +
+          r.lines.map(l => '<tr class="' + l.kind + '"><td>' + I.esc(l.label) + '<span class="note">' + I.esc(l.note) + '</span></td><td>' + I.money(l.amt) + '</td></tr>').join('') +
+          '<tr class="sub"><td>Subtotal before tax</td><td>' + I.money(r.sub) + '</td></tr>' +
+          '<tr><td>Sales tax<span class="note">' + r.rate.toFixed(2) + '% (' + I.esc(r.buyer.name) + ')</span></td><td>' + I.money(r.tax) + '</td></tr>' +
+          '<tr><td>Title</td><td>' + I.money(r.title) + '</td></tr><tr><td>Registration</td><td>' + I.money(r.reg) + '</td></tr>' +
+          '<tr class="total"><td>Out the door</td><td>' + I.money(r.total) + '</td></tr></table></details>' +
+        '<p class="disc">Estimate. Final taxes and fees are confirmed at signing.</p></section>' +
+
+      '<section class="card"><h2>Monthly payment</h2>' +
+        '<div class="calc"><label>Down payment<input id="pDown" inputmode="decimal" value="1000"></label>' +
+          '<label>Term<select id="pTerm"><option>24</option><option>36</option><option>48</option><option selected>60</option><option>72</option></select></label>' +
+          '<label>Est. rate %<input id="pApr" inputmode="decimal" value="' + s.apr + '"></label></div>' +
+        '<div class="result">About <b id="pOut"></b> a month <span class="small muted" id="pSub"></span></div>' +
+        '<p class="disc">Estimate only. Rate and terms depend on credit approval.</p></section>' +
+
+      '<section class="card"><h2>Trade-in estimate</h2>' +
+        '<div class="calc"><label>Year<input id="tYear" inputmode="numeric" value="2019"></label><label>Make<input id="tMake" value="Yamaha"></label>' +
+          '<label>Model<input id="tModel" value="MT-07"></label><label>Miles<input id="tMiles" inputmode="numeric" value="8200"></label>' +
+          '<label>Condition<select id="tCond"><option value="excellent">Excellent</option><option value="good" selected>Good</option><option value="fair">Fair</option><option value="rough">Rough</option></select></label></div>' +
+        '<div class="result" id="tOut"></div>' +
+        '<p class="disc">Estimate based on [valuation source] values. Final offer may vary after inspection. Demo math only, not market values.</p></section>' +
+
+      '<section class="card"><h2>Open recalls</h2>' +
+        '<p><span class="ok">No open recalls found</span> for VIN …' + I.esc(b.vin6 || 'on file') + '.</p>' +
+        '<p class="small muted">Demo result, checked ' + I.fmtDate(I.today()) + '. The live version looks the VIN up in the NHTSA recall database. You can check any VIN yourself at <a href="https://www.nhtsa.gov/recalls" target="_blank" rel="noopener">nhtsa.gov/recalls</a>.</p></section>' +
+    '</div>' +
+
+    '<section class="card"><h2>Walkaround video</h2><div class="video" style="margin-top:10px">60-second walkaround: cold start, idle, close-ups of any marks.<br>Video spot for the live site.</div></section>' +
+
+    (b.cond === 'used' && b.report ? report(b) : '') +
+
+    '<section class="card"><h2>Features</h2><ul>' + (b.features || []).map(f => '<li>' + I.esc(f) + '</li>').join('') + '</ul></section>';
+
+  document.querySelectorAll('[data-b]').forEach(x => x.addEventListener('click', () => {
+    buyer = x.dataset.b; try { localStorage.setItem('imoto_buyer', buyer); } catch (e) {} render();
+  }));
+  const dep = $('dep');
+  if (dep) dep.addEventListener('click', () => {
+    if (!confirm('Demo: this marks the bike “Sale pending” on the website. No payment is taken.\n\nThe live version takes a refundable deposit and pulls the bike from eBay at the same time.')) return;
+    I.setStatus(b.stock, 'pending'); render();
+  });
+  ['pDown', 'pTerm', 'pApr'].forEach(id => $(id).addEventListener('input', () => pay(r.total)));
+  ['tYear', 'tMake', 'tModel', 'tMiles', 'tCond'].forEach(id => $(id).addEventListener('input', () => trade(r.total)));
+  pay(r.total); trade(r.total);
+}
+
+function report(b) {
+  const R = b.report, n = R.items.length, ok = R.items.filter(i => i[1] === 'good').length;
+  const watch = R.items.filter(i => i[1] === 'watch'), repl = R.items.filter(i => i[1] === 'replace');
+  const sum = ok + ' of ' + n + ' checks OK' + (watch.length ? ' · ' + watch.length + ' to watch: ' + watch.map(w => w[0].toLowerCase()).join(', ') : '') +
+    (repl.length ? ' · ' + repl.length + ' replaced before sale' : '');
+  const lab = { good: 'OK', watch: 'Watch', replace: 'Replaced' };
+  return '<section class="card stack" style="gap:12px"><h2>Condition report</h2>' +
+    '<div class="sum">' + I.esc(sum) + '</div>' +
+    '<div>' + R.items.map(i => '<div class="ck"><span class="pill ' + i[1] + '">' + lab[i[1]] + '</span><div>' + I.esc(i[0]) + (i[2] ? '<small>' + I.esc(i[2]) + '</small>' : '') + '</div></div>').join('') + '</div>' +
+    (R.work && R.work.length ? '<div><h3>Work done before sale</h3><ul style="margin:6px 0 0">' + R.work.map(w => '<li>' + I.esc(w) + '</li>').join('') + '</ul></div>' : '') +
+    '<div><h3>Condition photos</h3><div class="sides" style="margin-top:8px">' + ['Front', 'Left side', 'Right side', 'Rear'].map(x => '<div class="side">' + x + '<br>photo</div>').join('') + '</div></div>' +
+    '<p class="small muted" style="margin:0">Inspected ' + I.fmtDate(R.date) + ' by the iMotorsports ' + I.esc(R.tech) + '. Items to watch are shown, not hidden.</p></section>';
+}
+
+function pay(total) {
+  const down = parseFloat($('pDown').value.replace(/[^0-9.]/g, '')) || 0, m = parseInt($('pTerm').value, 10), apr = parseFloat($('pApr').value) || 0;
+  $('pOut').textContent = I.money0(I.payment(total, down, m, apr));
+  $('pSub').textContent = 'for ' + m + ' months at ' + apr + '%, after ' + I.money0(down) + ' down';
+}
+function trade(total) {
+  const y = parseInt($('tYear').value, 10), mi = parseInt(String($('tMiles').value).replace(/\D/g, ''), 10) || 0;
+  if (!(y > 1980 && y <= new Date().getFullYear() + 1) || !$('tMake').value.trim() || !$('tModel').value.trim()) {
+    $('tOut').innerHTML = '<span class="muted">Enter your bike’s year, make and model.</span>'; return;
+  }
+  const [lo, hi] = I.tradeIn(y, $('tMake').value.trim(), $('tModel').value.trim(), mi, $('tCond').value);
+  $('tOut').innerHTML = 'Estimated trade-in <b>' + I.money0(lo) + ' – ' + I.money0(hi) + '</b>' +
+    '<div class="small" style="margin-top:6px">This bike after trade: <b style="font-size:20px">' + I.money0(Math.max(0, total - hi)) + ' – ' + I.money0(Math.max(0, total - lo)) + '</b></div>';
+}
+render();
+</script>
+</body>
+</html>
