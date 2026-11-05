@@ -85,7 +85,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
     <p class="status" style="margin:0">The Publish button needs a key from GitHub so it can put pages on your site. You do this once per phone or iPad.</p>
     <ol>
       <li>In Safari, sign in to github.com and open <b>Settings → Developer settings → Personal access tokens → Fine-grained tokens</b>. Or tap <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">this shortcut</a>.</li>
-      <li>Name it <b>B99 maker</b>. Set Expiration to <b>1 year</b> (or longer).</li>
+      <li>Name it <b>rider page maker</b>. Set Expiration to <b>1 year</b> (or longer).</li>
       <li>Under <b>Repository access</b>, pick <b>Only select repositories</b> and choose <b>a-ride-card</b>.</li>
       <li>Under <b>Permissions → Repository permissions</b>, set <b>Contents</b> to <b>Read and write</b>.</li>
       <li>Tap <b>Generate token</b>, copy it (it starts with github_pat_), and paste it below.</li>
@@ -461,7 +461,7 @@ function renderHubPage(H, root) {
   // ---------- GitHub publishing ----------
   const GH = { owner: 'CoryHutter', repo: 'a-ride-card', branch: 'main', dir: 'b99' };
   const API = 'https://api.github.com/repos/' + GH.owner + '/' + GH.repo + '/contents/';
-  const getToken = () => { try { return localStorage.getItem('b99-gh-token') || ''; } catch (e) { return ''; } };
+  const getToken = () => { try { return localStorage.getItem('aride-gh-token') || ''; } catch (e) { return ''; } };
   const ghHeaders = () => { const h = { Accept: 'application/vnd.github+json' }; const t = getToken(); if (t) h.Authorization = 'Bearer ' + t; return h; };
   const b64 = (str) => { const bytes = new TextEncoder().encode(str); let bin = ''; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(bin); };
   const unb64 = (s) => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\s/g, '')), (c) => c.charCodeAt(0)));
@@ -474,7 +474,7 @@ function renderHubPage(H, root) {
   async function publish(name, html, msg, statusEl) {
     if (!getToken()) { openSetup('Add your GitHub key first, then tap Publish again.'); return false; }
     if (!/^[a-z0-9-]+\.html$/.test(name)) { statusEl.textContent = 'Bad page code.'; return false; }
-    const path = GH.dir + '/' + name;
+    const path = (GH.dir ? GH.dir + '/' : '') + name;
     statusEl.textContent = 'Publishing…';
     try {
       const old = await ghGet(path);
@@ -497,7 +497,7 @@ function renderHubPage(H, root) {
       const r = await fetch('https://api.github.com/repos/' + GH.owner + '/' + GH.repo, { headers: { Accept: 'application/vnd.github+json', Authorization: 'Bearer ' + t } });
       const j = r.ok ? await r.json() : null;
       if (!j || !j.permissions || !j.permissions.push) { $('tokenStatus').innerHTML = '<span class="bad">That key can\'t write to a-ride-card. Check step 3 and 4 and make a new one.</span>'; return; }
-      try { localStorage.setItem('b99-gh-token', t); } catch (e) { $('tokenStatus').textContent = 'This browser would not save the key. Turn off Private Browsing and try again.'; return; }
+      try { localStorage.setItem('aride-gh-token', t); } catch (e) { $('tokenStatus').textContent = 'This browser would not save the key. Turn off Private Browsing and try again.'; return; }
       $('tokenIn').value = ''; $('tokenStatus').innerHTML = '<span class="okline">Key saved. Publish is ready on this phone.</span>';
       setTimeout(() => { $('setupBox').hidden = true; }, 1500);
     } catch (e) { $('tokenStatus').textContent = 'Could not reach GitHub. Check your signal.'; }
@@ -505,8 +505,8 @@ function renderHubPage(H, root) {
 
   // list pages already on the site
   async function sitePages(kind) {
-    const list = await ghGet(GH.dir);
-    const files = (list || []).filter((f) => f.type === 'file' && /^[a-z0-9-]+\.html$/.test(f.name) && f.name !== 'maker.html');
+    const list = await ghGet(GH.dir || '');
+    const files = (list || []).filter((f) => f.type === 'file' && /^[a-z0-9-]+\.html$/.test(f.name) && f.name !== 'maker.html' && f.name !== 'a-ride-maker.html' && (!f.size || f.size < 60000));
     const out = [];
     await Promise.all(files.map(async (f) => {
       try {
