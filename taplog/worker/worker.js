@@ -82,6 +82,12 @@ export default {
         return json(out, 200, cors);
       }
 
+      // Safety recalls from NHTSA for a bike: ?year=&make=&model= and optionally &vin= (17 characters)
+      if (req.method === 'GET' && p === '/api/recalls') {
+        const q = url.searchParams;
+        return json(await recalls(q.get('year'), q.get('make'), q.get('model'), q.get('vin')), 200, cors);
+      }
+
       // Parts that fit one bike, searched by words ("rear tire", "pads", "chain 520")
       if (req.method === 'GET' && p === '/api/parts') {
         const vehicle = num(url.searchParams.get('vehicle'));
@@ -246,6 +252,49 @@ export default {
 };
 
 /* ---------------- helpers ---------------- */
+
+/* ---- Safety recalls (NHTSA, free, no key) ----
+ * NHTSA lists recalls by model year, make and model. Its model names don't always match WPS's
+ * ("MT-09" vs "MT09", "Road Glide" vs "FLTRX Road Glide"), so we fetch NHTSA's own model list for
+ * that year and make and keep every model whose name matches. With a VIN, NHTSA's decoder gives
+ * the exact year, make and model first. This lists recalls for the model, not whether this
+ * particular bike was already repaired; the shop confirms that on nhtsa.gov or with a dealer.
+ */
+async function nhtsa(u) {
+  const r = await fetch(u, { cf: { cacheTtl: 21600, cacheEverything: true } });
+  if (!r.ok) throw new Error('NHTSA did not answer (' + r.status + '). Try again in a minute.');
+  return r.json();
+}
+const squash = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+async function recalls(year, make, model, vin) {
+  vin = squash(vin);
+  let from = 'model';
+  if (vin.length === 17) {
+    try {
+      const d = await nhtsa('https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues/' + vin + '?format=json');
+      const v = (d.Results || [])[0] || {};
+      if (v.Make && v.ModelYear) { make = v.Make; year = v.ModelYear; model = v.Model || model; from = 'vin'; }
+    } catch (e) { /* fall back to what the shop picked */ }
+  }
+  year = parseInt(year, 10); make = String(make || '').trim(); model = String(model || '').trim();
+  if (!year || !make) throw new Error('Pick the year and make first.');
+  const base = 'https://api.nhtsa.gov';
+  const ml = await nhtsa(base + '/products/vehicle/models?issueType=r&modelYear=' + year + '&make=' + encodeURIComponent(make));
+  const all = (ml.results || []).map(r => r.model).filter(Boolean);
+  const want = squash(model);
+  let models = want ? all.filter(m => { const s = squash(m); return s === want || s.includes(want) || want.includes(s); }) : [];
+  const out = [], seen = new Set();
+  for (const m of models.slice(0, 6)) {
+    const d = await nhtsa(base + '/recalls/recallsByVehicle?make=' + encodeURIComponent(make) + '&model=' + encodeURIComponent(m) + '&modelYear=' + year);
+    for (const r of d.results || []) {
+      if (seen.has(r.NHTSACampaignNumber)) continue;
+      seen.add(r.NHTSACampaignNumber);
+      out.push({ id: r.NHTSACampaignNumber, model: r.Model || m, component: r.Component || '', summary: r.Summary || '',
+        risk: r.Consequence || '', fix: r.Remedy || '', date: r.ReportReceivedDate || '' });
+    }
+  }
+  return { year, make, model, from, matched: models, otherModels: models.length ? [] : all.slice(0, 40), recalls: out };
+}
 
 function corsHeaders(origin, env) {
   const allowed = (env.ALLOWED_ORIGIN || '').split(',').map(s => s.trim()).filter(Boolean);

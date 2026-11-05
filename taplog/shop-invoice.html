@@ -49,6 +49,15 @@ button{font:inherit}
 .ymmsel select:focus{outline:none}
 .ymmsel select option{background:var(--panel);color:var(--ink)}
 @media(min-width:620px){.ymm{grid-template-columns:1.2fr 1.6fr 110px}.ymmsel.wide{grid-column:auto}}
+.recall{margin-top:10px;border:1px solid var(--line);border-left:3px solid var(--amber);border-radius:5px;padding:9px 11px;font-size:13px;line-height:1.45;background:var(--bg)}
+.recall.none{border-left-color:var(--green)}
+.recall b{color:var(--ink)}
+.recall summary{cursor:pointer;color:var(--ink);font-weight:600;min-height:28px;display:flex;align-items:center}
+.recall .ri{border-top:1px solid var(--line);padding:8px 0 4px}
+.recall .ri small{display:block;color:var(--muted);margin-top:2px}
+.recall .rn{color:var(--muted);margin-top:6px}
+.recall a{color:var(--acc)}
+.recall button{margin-top:6px;padding:6px 10px;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:5px;font-size:12.5px;cursor:pointer}
 .demo-note{margin-top:10px;font-size:12.5px;color:var(--amber);line-height:1.45}
 
 .tools{padding:12px var(--pad) 10px;border-bottom:1px solid var(--line);background:var(--panel)}
@@ -230,6 +239,7 @@ button{font:inherit}
           <div class="ymmsel wide"><span class="ymmlab">Model</span><select id="selModel" aria-label="Model"></select></div>
           <div class="ymmsel"><span class="ymmlab">Year</span><select id="selYear" aria-label="Year"></select></div>
         </div>
+        <div class="recall" id="recallBox" hidden></div>
       </div>
       <div class="demo-note" id="demoNote" style="display:none">
         Showing sample parts with made-up prices so you can try the screen. Once the WPS connection is set up in Settings,
@@ -578,12 +588,48 @@ $('selModel').addEventListener('change', async () => {
 });
 $('selYear').addEventListener('change', () => {
   const v = $('selYear').value;
-  if(!v){ vehicle = null; renderList(); return; }
+  if(!v){ vehicle = null; showRecalls(); renderList(); return; }
   const mk = $('selMake').selectedOptions[0].textContent, md = $('selModel').selectedOptions[0].textContent,
         yr = $('selYear').selectedOptions[0].textContent;
   vehicle = {vehicle: v, year: yr, make: mk, model: md, label: yr + ' ' + mk + ' ' + md};
   if(!$('cBike').value.trim() || $('cBike').dataset.auto === '1'){ $('cBike').value = vehicle.label; $('cBike').dataset.auto = '1'; }
+  showRecalls();
   renderList();
+});
+
+/* ---------------- Safety recalls (NHTSA, through the middleman) ----------------
+   Lists recalls on record for the model year. It can't tell whether this particular bike was
+   already repaired, so the box says so and links to the VIN check on nhtsa.gov. */
+let recallSeq = 0, recallList = [];
+async function showRecalls(){
+  const box = $('recallBox'), seq = ++recallSeq;
+  if(!vehicle || !LIVE){ box.hidden = true; return; }
+  box.hidden = false; box.className = 'recall'; box.textContent = 'Checking NHTSA for recalls on the ' + vehicle.label + '…';
+  let r;
+  try{ r = await api('/api/recalls?year=' + encodeURIComponent(vehicle.year) + '&make=' + encodeURIComponent(vehicle.make) + '&model=' + encodeURIComponent(vehicle.model)); }
+  catch(e){ if(seq === recallSeq){ box.innerHTML = 'Couldn\'t check recalls right now (' + esc(e.message) + '). You can look the VIN up at <a href="https://www.nhtsa.gov/recalls" target="_blank" rel="noopener">nhtsa.gov/recalls</a>.'; } return; }
+  if(seq !== recallSeq) return;
+  recallList = r.recalls || [];
+  const vinLink = ' Check this bike\'s VIN at <a href="https://www.nhtsa.gov/recalls" target="_blank" rel="noopener">nhtsa.gov/recalls</a> to see if any are still open.';
+  if(!r.matched || !r.matched.length){
+    box.innerHTML = 'NHTSA doesn\'t list a model called <b>' + esc(vehicle.model) + '</b> with recalls for ' + esc(vehicle.year) + ' ' + esc(vehicle.make) + '.' +
+      (r.otherModels && r.otherModels.length ? ' Models with recalls that year: ' + esc(r.otherModels.slice(0, 12).join(', ')) + (r.otherModels.length > 12 ? '…' : '') + '.' : '') + vinLink;
+    return;
+  }
+  if(!recallList.length){ box.className = 'recall none'; box.innerHTML = '<b>No recalls on record</b> for the ' + esc(vehicle.label) + ' at NHTSA.'; return; }
+  box.innerHTML = '<details><summary>' + recallList.length + ' recall' + (recallList.length > 1 ? 's' : '') + ' on record for this model</summary>' +
+    recallList.map((x, i) => '<div class="ri"><b>' + esc(x.id) + '</b> · ' + esc(x.component) +
+      '<small>' + esc(String(x.summary).slice(0, 260)) + (String(x.summary).length > 260 ? '…' : '') + '</small>' +
+      (x.fix ? '<small>Fix: ' + esc(String(x.fix).slice(0, 180)) + (String(x.fix).length > 180 ? '…' : '') + '</small>' : '') +
+      '<button type="button" data-recall="' + i + '">Note on this ticket</button></div>').join('') +
+    '<div class="rn">These are recalls for the model, not proof this bike still has one open.' + vinLink + ' Recall repairs are free at an authorized ' + esc(vehicle.make) + ' dealer.</div></details>';
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-recall]'); if(!b) return;
+  const x = recallList[+b.dataset.recall]; if(!x) return;
+  const line = 'Recall ' + x.id + ' (' + x.component + '): told customer, check status';
+  const n = $('cNotes'); if(!n.value.includes(x.id)){ n.value = (n.value.trim() ? n.value.trim() + '. ' : '') + line; n.dispatchEvent(new Event('input', {bubbles: true})); }
+  toast('Added to the job notes.');
 });
 $('cBike').addEventListener('input', () => { $('cBike').dataset.auto = '0'; });
 
