@@ -108,6 +108,23 @@ button{font:inherit}
 .cust input,.cust select{background:var(--bg);border:1px solid var(--line);border-radius:3px;color:var(--ink);padding:9px;font-size:14px;width:100%;font-family:inherit}
 .cust input:focus,.cust select:focus{outline:none;border-color:var(--acc)}
 .cust .wide{grid-column:1 / -1}
+.specs{margin-top:9px;border:1px solid var(--line);border-radius:4px;background:var(--bg)}
+.specs summary{list-style:none;cursor:pointer;padding:9px 11px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-family:"Barlow Condensed",sans-serif;font-weight:600;font-size:14px;letter-spacing:.1em;text-transform:uppercase;color:var(--acc)}
+.specs summary::-webkit-details-marker{display:none}
+.specs summary small{font-family:Inter,sans-serif;font-weight:400;letter-spacing:0;text-transform:none;font-size:12px;color:var(--muted)}
+.specs[open] summary{border-bottom:1px solid var(--line)}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px 9px;padding:10px 11px}
+.sf{display:flex;flex-direction:column;gap:3px;min-width:0}
+.sf > span{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;gap:4px}
+.sf > span i{font-style:normal;letter-spacing:0;text-transform:none;color:var(--acc-dim)}
+.sf input{background:var(--panel);border:1px solid var(--line);border-radius:3px;color:var(--ink);padding:8px;font-size:13.5px;width:100%;min-width:0;font-family:inherit}
+.sf input:focus{outline:none;border-color:var(--acc)}
+.sf.has input{border-color:var(--acc-dim)}
+.sf .use{align-self:flex-start;border:1px dashed var(--acc-dim);background:transparent;color:var(--acc);border-radius:3px;font-size:11.5px;padding:3px 7px;cursor:pointer;font-family:inherit;text-align:left}
+.snote{padding:0 11px 10px;font-size:11.5px;color:var(--muted)}
+.sadd{display:grid;grid-template-columns:1fr 1fr auto;gap:7px;padding:0 11px 10px}
+.sadd input{background:var(--panel);border:1px solid var(--line);border-radius:3px;color:var(--ink);padding:8px;font-size:13.5px;width:100%;min-width:0;font-family:inherit}
+.sadd button{border:1px solid var(--acc);background:transparent;color:var(--acc);border-radius:3px;padding:0 12px;font-family:"Barlow Condensed",sans-serif;font-weight:600;letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
 .lines{flex:1 0 auto;padding:10px var(--pad)}
 .line{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
 .line.new{animation:slide .22s ease-out}
@@ -291,6 +308,10 @@ button{font:inherit}
           <option value="Paid">Status: Paid</option>
         </select>
       </div>
+      <details class="specs" id="specBox">
+        <summary><span>Bike specs</span><small id="specSum">Add the bike first</small></summary>
+        <div id="specBody"></div>
+      </details>
     </div>
     <div class="lines" id="lines"></div>
     <div class="t-foot">
@@ -631,7 +652,100 @@ document.addEventListener('click', e => {
   const n = $('cNotes'); if(!n.value.includes(x.id)){ n.value = (n.value.trim() ? n.value.trim() + '. ' : '') + line; n.dispatchEvent(new Event('input', {bubbles: true})); }
   toast('Added to the job notes.');
 });
-$('cBike').addEventListener('input', () => { $('cBike').dataset.auto = '0'; });
+$('cBike').addEventListener('input', () => { $('cBike').dataset.auto = '0'; specSync(); });
+
+/* ---------------- Bike specs, built by the shop ----------------
+   Torque values, oil, tires, plugs... typed in once by the tech, saved to that bike model on this
+   iPad, and filled in again the next time the same model is on a ticket. Values saved for other
+   years of the same model show as a one-tap suggestion. Shop only, never on the customer's copy. */
+const SPEC_FIELDS = ['Engine oil', 'Oil capacity', 'Oil filter', 'Spark plug', 'Plug gap', 'Front tire', 'Rear tire',
+  'Tire pressure F / R', 'Chain & sprockets', 'Coolant', 'Fork oil', 'Valve clearance', 'Drain plug torque', 'Axle nut torque', 'Battery'];
+function specAll(){ try{ return JSON.parse(store.get('tlg_specs') || '{}'); }catch(e){ return {}; } }
+function specPut(db){ store.set('tlg_specs', JSON.stringify(db)); }
+function specKeys(txt){
+  const t = (txt || '').toLowerCase().replace(/[^a-z0-9.\- ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if(!t) return null;
+  const y = t.match(/(?:^|\s)((?:19|20)\d\d)(?=\s|$)/);
+  const base = (y ? t.replace(y[0], ' ') : t).replace(/\s+/g, ' ').trim();
+  return {full: t, base, year: y ? y[1] : ''};
+}
+let specKey = undefined;
+function specSync(){
+  const k = specKeys(bikeText()), id = k ? k.full : '';
+  if(id === specKey) return;
+  specKey = id; drawSpecs();
+}
+function specView(){
+  const k = specKeys(bikeText()); if(!k) return null;
+  const db = specAll(), mine = (db[k.full] && db[k.full].vals) || {}, other = {};
+  Object.entries(db).forEach(([key, e]) => {
+    if(key === k.full || !e || specKeys(e.label || key).base !== k.base) return;
+    Object.entries(e.vals || {}).forEach(([n, x]) => {
+      if(!x || !x.v) return;
+      if(!other[n] || String(x.at) > String(other[n].at)) other[n] = {v: x.v, at: x.at, year: e.year || specKeys(e.label || key).year || 'other year'};
+    });
+  });
+  const names = [...SPEC_FIELDS];
+  [...Object.keys(mine), ...Object.keys(other)].forEach(n => { if(!names.includes(n)) names.push(n); });
+  return {k, mine, other, names};
+}
+function drawSpecs(){
+  const v = specView();
+  if(!v){ $('specSum').textContent = 'Add the bike first'; $('specBody').innerHTML = '<div class="snote" style="padding-top:10px">Type or pick the bike, and any specs saved for that model show up here.</div>'; return; }
+  specSummary(v);
+  $('specBody').innerHTML = '<div class="sgrid">' + v.names.map((n, i) => {
+    const m = v.mine[n], o = v.other[n], val = m && m.v ? m.v : '';
+    return '<label class="sf' + (val ? ' has' : '') + '"><span>' + esc(n) + (m && m.v && m.at ? '<i>' + new Date(m.at).toLocaleDateString() + '</i>' : '') + '</span>' +
+      '<input data-spec="' + esc(n) + '" value="' + esc(val) + '" autocomplete="off" spellcheck="false">' +
+      (!val && o ? '<button type="button" class="use" data-use="' + i + '">' + esc(o.year) + ': ' + esc(o.v) + ' · use</button>' : '') + '</label>';
+  }).join('') + '</div>' +
+    '<div class="sadd"><input id="spNewN" placeholder="Other spec (e.g. Countershaft nut)" autocomplete="off"><input id="spNewV" placeholder="Value" autocomplete="off"><button type="button" id="spNewB">Add</button></div>' +
+    '<div class="snote">Saved for every ' + esc(bikeText()) + ' on this iPad. These are your shop’s own notes, so double-check against the service manual. Shop only, never on the customer’s copy.</div>';
+  $('specBody').dataset.names = JSON.stringify(v.names);
+}
+function specSummary(v){
+  v = v || specView(); if(!v) return;
+  const saved = Object.values(v.mine).filter(x => x && x.v).length, sug = Object.keys(v.other).filter(n => !(v.mine[n] && v.mine[n].v)).length;
+  $('specSum').textContent = saved ? saved + ' saved for this bike' + (sug ? ' · ' + sug + ' from other years' : '') : sug ? sug + ' from other years of this model' : 'None saved yet · tap to add';
+}
+function specSave(name, value){
+  const k = specKeys(bikeText()); if(!k || !name) return;
+  const db = specAll(), e = db[k.full] || {label: bikeText(), year: k.year, vals: {}};
+  e.label = bikeText(); e.year = k.year;
+  value = String(value || '').trim().slice(0, 80);
+  if(value) e.vals[name] = {v: value, at: new Date().toISOString()}; else delete e.vals[name];
+  if(Object.keys(e.vals).length) db[k.full] = e; else delete db[k.full];
+  specPut(db);
+}
+$('specBody').addEventListener('change', e => {
+  const i = e.target.closest('[data-spec]'); if(!i) return;
+  // Update in place, so the next box the tech tapped keeps the keyboard
+  specSave(i.dataset.spec, i.value);
+  const f = i.closest('.sf'), has = !!i.value.trim();
+  f.classList.toggle('has', has);
+  const u = f.querySelector('.use'); if(u && has) u.remove();
+  const d = f.querySelector('span i'); if(d) d.remove();
+  if(has) f.querySelector('span').insertAdjacentHTML('beforeend', '<i>' + new Date().toLocaleDateString() + '</i>');
+  specSummary();
+  toast(has ? i.dataset.spec + ' saved for this bike' : i.dataset.spec + ' cleared');
+});
+$('specBody').addEventListener('click', e => {
+  const u = e.target.closest('[data-use]');
+  if(u){
+    const v = specView(), n = v && v.names[+u.dataset.use];
+    if(n && v.other[n]){ specSave(n, v.other[n].v); drawSpecs(); toast(n + ' saved for this bike'); }
+    return;
+  }
+  if(e.target.closest('#spNewB')){
+    const n = $('spNewN').value.trim().replace(/\s+/g, ' ').slice(0, 40), val = $('spNewV').value.trim();
+    if(!n){ toast('Name the spec'); return; }
+    if(!val){ toast('Add the value'); return; }
+    specSave(n, val); drawSpecs(); $('specBox').open = true; toast(n + ' saved for this bike');
+  }
+});
+$('specBody').addEventListener('keydown', e => {
+  if(e.key === 'Enter' && e.target.matches('[data-spec], #spNewV')){ e.preventDefault(); if(e.target.id === 'spNewV') $('spNewB').click(); else e.target.blur(); }
+});
 
 /* ---------------- Search ---------------- */
 let scope = 'fit', results = [], searchSeq = 0, tSearch;
@@ -825,6 +939,7 @@ function lineMg(l){
   return {t: 'margin ' + pctTxt(m), cls: 'mg' + (m < 0 ? ' neg' : '')};
 }
 function render(){
+  specSync();
   if(!T.lines.length){
     $('lines').innerHTML = '<div class="blank"><b>Nothing on the ticket</b>Tap labor or a part to start. Everything can be changed once it lands here.</div>';
   } else {
