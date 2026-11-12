@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#0b0b0b"><title>B99 Setup · Jax Baker · Race Bike Mod</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;600;800&display=swap"><style>
+*{box-sizing:border-box}
+.rp{background:#d6d6d6;color:#0b0b0b;font-family:'Archivo',system-ui,sans-serif;font-size:16px;line-height:1.4;max-width:560px;margin:0 auto;padding:20px max(16px,env(safe-area-inset-right,0px)) 32px max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:16px}
+.rp .disp{font-family:'Anton',Impact,sans-serif;font-weight:400}
+.rp .top{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#0b0b0b;border-radius:4px;padding:10px 14px}
+.rp .top .logo{width:150px;height:58px;background:url(data:image/png;base64,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) left center/contain no-repeat;flex:none}
+.rp .top .id{font-size:12px;font-weight:600;color:#bdbdbd;white-space:nowrap}
+.rp .board{background:#0b0b0b;color:#fff;border-radius:4px;border:6px solid #f5f5f5;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.rp .riderb{padding:18px;gap:6px}
+.rp .lab{font-size:12px;font-weight:600;letter-spacing:.14em;color:#bdbdbd}
+.rp .name{font-family:'Anton',Impact,sans-serif;font-size:56px;line-height:.95;text-transform:uppercase;overflow-wrap:anywhere}
+.rp .bikeline{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:4px;font-size:16px}
+.rp .badge{background:#f6e600;color:#0b0b0b;font-family:'Anton',Impact,sans-serif;font-size:20px;padding:2px 10px;border-radius:3px}
+.rp .vin{font-size:12px;color:#bdbdbd}
+.rp .tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.rp .tile{background:#f5f5f5;border-radius:4px;padding:10px;min-width:0}
+.rp .tile span{display:block;font-size:12px;font-weight:600;color:#555555}
+.rp .tile b{display:block;font-weight:800;font-size:18px}
+.rp .tile b.gold{color:#0b0b0b}
+.rp .bhead{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.rp .bhead .t{font-family:'Anton',Impact,sans-serif;font-size:30px;color:#ffffff}
+.rp .bhead .m{font-size:13px;color:#bdbdbd}
+.rp .bigs{display:grid;gap:10px}
+.rp .big{border-top:2px solid #3a3a3a;padding-top:6px;min-width:0}
+.rp .big span{display:block;font-size:13px;color:#bdbdbd;font-weight:800;letter-spacing:.04em}
+.rp .big b{font-family:'Anton',Impact,sans-serif;font-weight:400;font-size:34px;line-height:1.05}
+.rp .big small{font-size:13px;margin-left:3px}
+.rp .rows{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));row-gap:8px;column-gap:10px;font-size:16px;border-top:2px solid #3a3a3a;padding-top:10px}
+.rp .rows span{color:#bdbdbd;font-weight:800}
+.rp .rows b{text-align:right;color:#fff200}
+.rp .big b{color:#fff200}
+.rp .foot{font-size:12px;color:#bdbdbd}
+.rp .bnote{border-top:2px solid #3a3a3a;padding-top:10px;font-size:15px;line-height:1.45;white-space:pre-line;overflow-wrap:anywhere}
+.rp .bnote span{display:block;font-size:12px;font-weight:600;letter-spacing:.14em;color:#f6e600;margin-bottom:4px}
+.rp .log{background:#f5f5f5;border-radius:4px;overflow:hidden;display:flex;flex-direction:column}
+.rp .loghead{background:#f6e600;color:#0b0b0b;padding:10px 16px;display:flex;justify-content:space-between;align-items:baseline}
+.rp .loghead .t{font-family:'Anton',Impact,sans-serif;font-size:22px;letter-spacing:.03em}
+.rp .loghead span{font-size:12px;font-weight:600}
+.rp .entry{padding:14px 16px;display:flex;flex-direction:column;gap:4px;font-size:15px;border-top:2px solid #dddddd}
+.rp .entry:first-of-type{border-top:0}
+.rp .entry .r{display:flex;justify-content:space-between;gap:12px}
+.rp .entry .r span:last-child{text-align:right;white-space:nowrap}
+.rp .entry .d{color:#555555}
+.rp .entry p{margin:2px 0 0;color:#555555;font-size:14px;white-space:pre-line}
+.rp .book{display:flex;align-items:center;justify-content:center;min-height:56px;background:#0b0b0b;color:#f6e600;border-radius:4px;font-family:'Anton',Impact,sans-serif;font-size:22px;letter-spacing:.04em;text-decoration:none;text-align:center;padding:0 12px}
+.rp .unit{display:flex;justify-content:space-between;align-items:center;gap:12px;background:#f5f5f5;border-radius:4px;padding:14px 16px;color:#0b0b0b;text-decoration:none;min-height:64px}
+.rp .unit b{display:block;font-size:17px}
+.rp .unit span{display:block;color:#555555;font-size:14px}
+.rp .unit .go{font-family:'Anton',Impact,sans-serif;font-size:18px;color:#0b0b0b;background:#f6e600;border-radius:3px;padding:4px 10px;white-space:nowrap}
+html,body{margin:0;background:#d6d6d6}</style></head><body><div id="app"></div><script type="application/json" id="ride-data">{"rider":"Jax Baker","entryId":"","bike":"2026 KTM 85 SX","bikeLabel":"Race Bike Mod","vin":"","covers":"both","weight":"88","trackType":"MX","date":"Nov 11, 2026","phone":"815-721-0236","fork":{"model":"WP 43mm","comp":"15","reb":"18","spring":".69","springUnit":"kg/mm","oilLevel":"365","oilLevelUnit":"mm","preload":"5","preloadUnit":"mm","setHeight":"Flush","setting":"MX","notes":"RT spring conversion"},"shock":{"model":"WP","compLow":"10","compHigh":"2","reb":"15","spring":"30","springUnit":"N/mm","raceSag":"92","preload":"6","setting":"MX","notes":"2.2 RS bleed"},"bikeYear":"2026","bikeMake":"KTM","bikeModel":"85 SX","bikeExtra":"","history":[{"date":"Nov 11, 2026","title":"Initial setup","note":"","changes":[]}],"slug":"yevs3h"}</script><script>function renderRiderPage(D, root) {
+  var covers = D.covers || 'both';
+  function el(t, c, x) { var e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; }
+  function has(v) { return v !== undefined && v !== null && String(v).trim() !== ''; }
+  function unit(vals, k, def) { return (vals && vals[k + 'Unit']) || def; }
+  // spring rate display: fork kg/mm 0.47, fork N/mm 4.6, shock kg/mm 5.4, shock N/mm 53
+  function fmtSpring(part, v, u) { var n = parseFloat(v); if (isNaN(n)) return v; if (u === 'kg/mm') return n.toFixed(part === 'fork' ? 2 : 1); if (u === 'N/mm') return n.toFixed(part === 'fork' ? 1 : 0); return v; }
+  root.textContent = '';
+  var wrap = el('div', 'rp');
+  var top = el('div', 'top'); var logo = el('div', 'logo'); logo.setAttribute('role', 'img'); logo.setAttribute('aria-label', 'B99 Suspension');
+  top.append(logo, el('div', 'id', D.entryId || '')); wrap.appendChild(top);
+  // rider board
+  var rb = el('div', 'board riderb');
+  rb.append(el('div', 'lab', covers === 'fork' ? 'RIDER · FORK' : covers === 'shock' ? 'RIDER · SHOCK' : 'RIDER'), el('div', 'name', D.rider || 'Rider'));
+  var label = D.bikeLabel || '', letter = '';
+  var m = label.match(/\(([A-Za-z0-9]{1,3})\)\s*$/); if (m) { letter = m[1].toUpperCase(); label = label.replace(m[0], '').trim(); }
+  var bl = el('div', 'bikeline'); if (letter) bl.appendChild(el('span', 'badge', letter));
+  bl.appendChild(el('span', null, [label, D.bike].filter(Boolean).join(' · ')));
+  rb.appendChild(bl);
+  if (D.vin) rb.appendChild(el('div', 'vin', 'VIN ending ' + D.vin));
+  wrap.appendChild(rb);
+  // tiles
+  var tiles = el('div', 'tiles');
+  [['SET UP', String(D.date || '—').replace(/,\s*\d{4}$/, ''), ''], ['WEIGHT', D.weight || '—', ''], ['TRACK', D.trackType || '—', 'gold']].forEach(function (t) {
+    var d = el('div', 'tile'); d.append(el('span', null, t[0]), el('b', t[2], t[1])); tiles.appendChild(d);
+  });
+  wrap.appendChild(tiles);
+  // boards
+  function board(part, title, vals, bigs, rows, footer) {
+    if (!vals) return;
+    var bigList = bigs.filter(function (b) { return has(vals[b[0]]); });
+    var rowList = rows.filter(function (r) { return has(vals[r[0]]); });
+    if (!bigList.length && !rowList.length && !has(vals.notes)) return;
+    var b = el('div', 'board');
+    var h = el('div', 'bhead'); h.append(el('div', 't', title), el('div', 'm', vals.model || '')); b.appendChild(h);
+    if (bigList.length) {
+      var g = el('div', 'bigs'); g.style.gridTemplateColumns = 'repeat(' + bigList.length + ',minmax(0,1fr))';
+      bigList.forEach(function (x) { var c = el('div', 'big'); c.appendChild(el('span', null, x[1])); var v = el('b', null, String(vals[x[0]])); if (x[2]) v.appendChild(el('small', null, x[2])); c.appendChild(v); g.appendChild(c); });
+      b.appendChild(g);
+    }
+    if (rowList.length) {
+      var r = el('div', 'rows');
+      rowList.forEach(function (x) {
+        var u = unit(vals, x[0], x[2]); var lbl = x[1];
+        if (x[0] === 'spring' && u === 'PSI') lbl = 'Air pressure';
+        if (x[0] === 'oilLevel' && u === 'cc') lbl = 'Oil volume';
+        var val = x[0] === 'spring' ? fmtSpring(part, vals[x[0]], u) : vals[x[0]];
+        r.append(el('span', null, lbl), el('b', null, String(val) + (u ? ' ' + u : '')));
+      });
+      b.appendChild(r);
+    }
+    if (has(vals.notes)) { var nt = el('div', 'bnote'); nt.appendChild(el('span', null, 'NOTES')); nt.appendChild(document.createTextNode(String(vals.notes))); b.appendChild(nt); }
+    if (footer && bigList.length) b.appendChild(el('div', 'foot', footer));
+    wrap.appendChild(b);
+  }
+  if (covers !== 'shock') board('fork', 'FORK', D.fork, [['comp', 'COMP', ''], ['reb', 'REB', '']], [['spring', 'Spring', 'N/mm'], ['oilLevel', 'Oil level', 'mm'], ['preload', 'Preload', 'mm'], ['setHeight', 'Set height', ''], ['setting', 'Setting', '']], '');
+  if (covers !== 'fork') board('shock', 'SHOCK', D.shock, [['compLow', 'LOW SPD COMP', ''], ['compHigh', 'HIGH SPD COMP', 'turns'], ['reb', 'REB', '']], [['spring', 'Spring', 'N/mm'], ['raceSag', 'Race sag', 'mm'], ['preload', 'Preload', 'mm'], ['setting', 'Setting', '']], '');
+  // service log
+  if (D.history && D.history.length) {
+    var log = el('div', 'log');
+    var lh = el('div', 'loghead'); lh.append(el('div', 't', 'SERVICE LOG'), el('span', null, 'Newest first')); log.appendChild(lh);
+    D.history.forEach(function (h) {
+      var e = el('div', 'entry');
+      var hr = el('div', 'r'); hr.append(el('b', null, h.title || 'Service'), el('span', 'd', h.date || '')); e.appendChild(hr);
+      (h.changes || []).forEach(function (c) { var cr = el('div', 'r'); cr.append(el('span', null, c.label), el('span', null, c.from + ' → ' + c.to + (c.unit ? ' ' + c.unit : ''))); e.appendChild(cr); });
+      if (h.note) e.appendChild(el('p', null, h.note));
+      log.appendChild(e);
+    });
+    wrap.appendChild(log);
+  }
+  if (D.phone) { var a = el('a', 'book', 'TEXT B99 TO BOOK SERVICE'); a.href = 'sms:' + String(D.phone).replace(/[^0-9+]/g, ''); wrap.appendChild(a); }
+  root.appendChild(wrap);
+};renderRiderPage(JSON.parse(document.getElementById("ride-data").textContent),document.getElementById("app"));</script></body></html>
