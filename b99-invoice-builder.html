@@ -358,6 +358,62 @@ function init(){
     Object.keys(CAT.parts).length + ' parts \u00b7 ' + CAT.models.length +
     (CAT.models.length === 1 ? ' bike' : ' bikes');
   render();
+  loadJobFromHash();
+  window.addEventListener('hashchange', loadJobFromHash);
+}
+
+/* ---- Job handed over from the B99 Suspension Job Board (#job=...) ---- */
+function decodeJob(str){
+  str = str.replace(/-/g,'+').replace(/_/g,'/');
+  while(str.length % 4) str += '=';
+  return JSON.parse(decodeURIComponent(escape(atob(str))));
+}
+function findModel(b){
+  if(!b) return null;
+  if(b.id){ const m = CAT.models.find(x => x.id === b.id); if(m) return m; }
+  const norm = s => String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const mk = norm(b.make), md = norm(b.model), yr = Number(b.year)||0;
+  if(!mk) return null;
+  let c = CAT.models.filter(m => norm(m.make) === mk);
+  if(yr) c = c.filter(m => m.year === yr);
+  if(md) c = c.filter(m => norm(m.model).includes(md) || md.includes(norm(m.model)) ||
+                           norm(m.model).replace(/[a-z]/g,'').startsWith(md.replace(/[a-z]/g,'')));
+  return c.length ? c.sort((x,y) => x.model.length - y.model.length)[0] : null;
+}
+function loadJobFromHash(){
+  const h = location.hash || '';
+  if(!h.startsWith('#job=')) return;
+  let job;
+  try{ job = decodeJob(h.slice(5)); }catch(e){ toast('Could not read the job from the Job Board'); return; }
+  try{ history.replaceState(null, '', location.pathname + location.search); }catch(e){}
+  if(lines.length && !confirm('Replace the current ticket (' + lines.length + ' lines) with the job for ' + (job.c || 'this customer') + '?')) return;
+  lines = [];
+  const m = findModel(job.bike);
+  if(m) selectBike(m.id);
+  const bikeText = job.bike ? [job.bike.year, job.bike.make, job.bike.model].filter(Boolean).join(' ') : '';
+  if(!m && bikeText) $('cBike').value = bikeText;
+  $('cName').value = job.c || '';
+  $('cPhone').value = job.ph || '';
+  $('cRider').value = job.n || '';
+  $('cWO').value = job.wo || '';
+  let ship = 0, noPrice = 0;
+  (job.lines || []).forEach(l => {
+    const d = String(l.d || '').trim(); if(!d) return;
+    const qty = Number(l.q) || 1;
+    const price = (l.p === '' || l.p == null) ? 0 : Number(l.p) || 0;
+    if(l.p === '' || l.p == null) noPrice++;
+    if(/^shipping\b/i.test(d)){ ship += price * qty; return; }
+    const labor = /labor|revalve|rebuild|service|lowering|install|setup|set-up/i.test(d);
+    lines.push({ pn:'JOB', d:d, price:price, qty:qty, ovr:'', tax:!labor,
+                 bike:(m ? m.label : (bikeText || model.label)), fresh:true });
+  });
+  if(ship) $('ship').value = ship.toFixed(2);
+  render();
+  $('ticket').classList.add('open');
+  toast('Loaded ' + (job.c || 'job') + (m ? ' \u00b7 ' + m.label : '') +
+        (noPrice ? ' \u00b7 ' + noPrice + ' line' + (noPrice>1?'s':'') + ' need a price' : ''));
+  if(!m && bikeText) setTimeout(() => toast('Pick the exact model above: ' + bikeText), 2600);
+  else if(m && !(job.bike && job.bike.id === m.id)) setTimeout(() => toast('Best guess ' + m.label + ' \u2014 check the model above'), 2600);
 }
 
 function catOrder(name){
