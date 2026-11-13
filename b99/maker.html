@@ -788,6 +788,46 @@ function renderHubPage(H, root) {
   $('date').value = todayIso();
   clearAll();
   if (!getToken()) openSetup();
+
+  // ---- Job handed over from the B99 Suspension Job Board (#job=...) ----
+  function decodeJob(str) {
+    str = str.replace(/-/g, '+').replace(/_/g, '/'); while (str.length % 4) str += '=';
+    return JSON.parse(decodeURIComponent(escape(atob(str))));
+  }
+  function jobBike(b) {
+    b = b || {}; const norm = (v) => String(v || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const make = Object.keys(BIKES).find((k) => norm(k) === norm(b.make)) || (b.make ? 'Other' : '');
+    let model = b.model || '';
+    if (BIKES[make]) {
+      const m = norm(model);
+      const hit = BIKES[make].filter((x) => m && (m === norm(x) || m.startsWith(norm(x)))).sort((x, y) => norm(y).length - norm(x).length)[0];
+      if (hit) model = hit;
+    }
+    return { bikeYear: b.year ? String(b.year) : '', bikeMake: make === 'Other' ? b.make : make, bikeModel: model };
+  }
+  async function loadJobFromHash() {
+    const h = location.hash || ''; if (!h.startsWith('#job=')) return;
+    let J; try { J = decodeJob(h.slice(5)); } catch (e) { $('loadStatus').textContent = 'Could not read the job from the Job Board.'; return; }
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+    showTab(false);
+    const finish = (msg) => { if (J.title && !$('title').value) $('title').value = J.title; update(); $('loadStatus').textContent = msg; window.scrollTo(0, 0); };
+    const code = cleanSlug(J.slug);
+    if (code) {
+      try {
+        const r = await fetch(code + '.html?t=' + Date.now(), { cache: 'no-store' });
+        if (r.ok) { const D = readData(await r.text(), 'ride-data'); if (D && D.slug) { loadData(D, ''); if (J.w) $('weight').value = J.w + ' lb'; if (J.t) $('trackType').value = J.t; finish('Return visit for ' + (D.rider || J.r || 'this rider') + ', sent from the Job Board. Update the settings, then Publish.'); return; } }
+      } catch (e) {}
+    }
+    clearAll();
+    $('rider').value = J.r || '';
+    setBike(jobBike(J.bike));
+    $('weight').value = J.w ? J.w + ' lb' : '';
+    $('trackType').value = J.t || '';
+    setCovers(J.cov || 'both');
+    finish('Filled in from the Job Board. Enter the fork and shock settings, then Publish.');
+  }
+  loadJobFromHash();
+  window.addEventListener('hashchange', loadJobFromHash);
 })();
 </script>
 
