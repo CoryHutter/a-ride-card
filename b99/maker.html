@@ -58,6 +58,9 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
 .status { font-size: 14px; color: var(--mute) }
 .mode { font-size: 14px; padding: 10px 12px; border-radius: 10px; background: var(--ok-soft); color: var(--ok) }
 .out { background: var(--panel); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 8px }
+.qr { background:#fff; border-radius:10px; padding:10px; width:fit-content; margin:8px 0 4px }
+.qr svg { display:block; width:170px; height:170px }
+.qrnote { font-size:12px; opacity:.75; margin-bottom:6px }
 .url { font-family: var(--mono); font-size: 13px; word-break: break-all; user-select: all; background: var(--field); border-radius: 8px; padding: 8px 10px }
 .row { display: flex; gap: 8px; flex-wrap: wrap }
 .changes { font-size: 13px; color: var(--mute); line-height: 1.6 }
@@ -171,6 +174,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
           <div class="changes" id="changes">None yet.</div>
           <div class="kick">Link to load on the NFC tag</div>
           <div class="url" id="url"></div>
+          <div class="qr" id="urlQr" hidden></div><div class="qrnote" id="urlQrNote" hidden>Scan with your iPhone camera to open the link, then write it to the tag with NFC Tools. Publish first.</div>
           <div class="kick">Write next to the tag</div>
           <div class="url" id="tagLabel"></div>
           <div class="row">
@@ -205,6 +209,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
         <div class="out">
           <div class="kick">Rider page link</div>
           <div class="url" id="hubUrl"></div>
+          <div class="qr" id="hubQr" hidden></div>
           <div class="row">
             <button class="btn primary" type="button" id="hubPub">Publish rider page</button>
             <button class="btn ghost" type="button" id="hubCopy">Copy link</button>
@@ -381,6 +386,21 @@ function renderHubPage(H, root) {
   const todayIso = () => { const t = new Date(); return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'); };
   const cleanSlug = (v) => (v || '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
   const urlFor = (code) => { let b = $('base').value.trim(); if (b && !b.endsWith('/')) b += '/'; return b + code + '.html'; };
+
+  // ---- QR code of the page link, so the iPhone can grab it for the NFC tag ----
+  let qrLib = null;
+  function loadQR() {
+    if (window.qrcode) return Promise.resolve(window.qrcode);
+    if (!qrLib) qrLib = new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js'; sc.onload = () => res(window.qrcode); sc.onerror = () => { qrLib = null; rej(); }; document.head.appendChild(sc); });
+    return qrLib;
+  }
+  function drawQR(id, text, noteId) {
+    loadQR().then((qrcode) => {
+      const q = qrcode(0, 'M'); q.addData(text); q.make();
+      const box = $(id); box.innerHTML = q.createSvgTag({ cellSize: 4, margin: 2, scalable: true }); box.hidden = false;
+      if (noteId) $(noteId).hidden = false;
+    }).catch(() => {});
+  }
 
   // ---- bike year / make / model dropdowns ----
   const BIKES = {
@@ -645,7 +665,7 @@ function renderHubPage(H, root) {
     renderRiderPage(cur, previewRoot);
     $('changes').textContent = !prev ? 'New page: this visit becomes the first service log entry.' :
       changes.length ? changes.map((c) => c.label + ': ' + c.from + ' → ' + c.to).join(' · ') : 'No setting changes yet. Edit a value to record a change.';
-    $('url').textContent = urlFor(cur.slug);
+    $('url').textContent = urlFor(cur.slug); drawQR('urlQr', urlFor(cur.slug), 'urlQrNote');
     $('tagLabel').textContent = 'B99 #' + cur.slug.slice(0, 4).toUpperCase() + (cur.bikeLabel ? ' · ' + cur.bikeLabel : '') + (cv === 'fork' ? ' · Fork' : cv === 'shock' ? ' · Shock' : '');
     saveSettings();
   }
@@ -739,7 +759,7 @@ function renderHubPage(H, root) {
     const list = $('hubList'); list.textContent = '';
     if (!units.length) { const d = document.createElement('div'); const s = document.createElement('span'); s.textContent = 'No files picked yet.'; d.append(s, document.createElement('span')); list.appendChild(d); }
     units.forEach((u) => { const d = document.createElement('div'); const a = document.createElement('span'); a.textContent = (u.bikeLabel || u.bike || 'Bike') + ' · ' + (u.covers === 'fork' ? 'Fork' : u.covers === 'shock' ? 'Shock' : 'Fork + shock'); const b = document.createElement('span'); b.textContent = u.slug + '.html'; d.append(a, b); list.appendChild(d); });
-    $('hubUrl').textContent = urlFor(H.slug);
+    $('hubUrl').textContent = urlFor(H.slug); drawQR('hubQr', urlFor(H.slug));
   }
   ['hubName', 'hubSlug'].forEach((id) => $(id).addEventListener('input', updateHub));
   $('hubFiles').addEventListener('change', async (ev) => {
