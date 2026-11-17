@@ -300,6 +300,7 @@ h1,h2{font-family:"Barlow Condensed",Impact,sans-serif;font-weight:600;letter-sp
         <button id="exportCsv">Export CSV</button>
         <button id="clearAll">Clear</button>
         <button class="primary" id="printBtn">Print / PDF</button>
+        <button id="toBoard" style="flex-basis:100%">&#8617; Send to Job Board</button>
       </div>
       <div class="print-only" style="margin-top:14px;font-size:11px;color:#444;border-top:1px solid #999;padding-top:8px">
         B99 Performance Suspension &middot; Parts and pricing per Race Tech published MSRP.
@@ -387,7 +388,7 @@ function loadJobFromHash(){
   try{ job = decodeJob(h.slice(5)); }catch(e){ toast('Could not read the job from the Job Board'); return; }
   try{ history.replaceState(null, '', location.pathname + location.search); }catch(e){}
   if(lines.length && !confirm('Replace the current ticket (' + lines.length + ' lines) with the job for ' + (job.c || 'this customer') + '?')) return;
-  lines = [];
+  lines = []; lastPrintedInv = '';
   const m = findModel(job.bike);
   if(m) selectBike(m.id);
   const bikeText = job.bike ? [job.bike.year, job.bike.make, job.bike.model].filter(Boolean).join(' ') : '';
@@ -614,6 +615,36 @@ $('discPct').addEventListener('change', totals);
 
 function stampInv(){ $('invNo').textContent = 'INV-' + seq; }
 
+/* ---- Send the finished invoice back to the B99 Suspension Job Board ----
+   The board can't be written to from here, so this copies a short code the
+   board reads when it's pasted into the job's Billing tab. */
+const BOARD_URL = 'https://claude.ai/artifact/66f1RTVe1kd5RNeyD7ZAX5';
+let lastPrintedInv = '';
+function boardCode(){
+  const unit = l => (l.ovr === '' ? l.price : Number(l.ovr)) || 0;
+  const out = lines.map(l => ({ d: (l.pn && l.pn !== 'JOB' && l.pn !== 'CUSTOM' ? l.pn + ' ' : '') + l.d, q: l.qty, p: +unit(l).toFixed(2), t: l.tax ? 1 : 0 }));
+  const partsSub = lines.reduce((s,l) => s + (l.tax ? lineTotal(l) : 0), 0);
+  const sub = lines.reduce((s,l) => s + lineTotal(l), 0);
+  const pct = parseFloat($('discPct').value) || 0, disc = partsSub * pct / 100;
+  const tax = (partsSub - disc) * ((parseFloat($('taxRate').value) || 0) / 100);
+  const ship = parseFloat($('ship').value) || 0;
+  if(disc > 0) out.push({ d: 'Discount ' + pct + '% on parts', q: 1, p: -(+disc.toFixed(2)), t: 0 });
+  if(tax > 0) out.push({ d: 'Sales tax', q: 1, p: +tax.toFixed(2), t: 0 });
+  if(ship > 0) out.push({ d: 'Shipping', q: 1, p: +ship.toFixed(2), t: 0 });
+  const data = { v: 1, inv: lastPrintedInv || $('invNo').textContent, wo: $('cWO').value.trim(), c: $('cName').value.trim(),
+                 date: new Date().toISOString().slice(0,10), total: +(sub - disc + tax + ship).toFixed(2), lines: out };
+  return 'B99INV:' + btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+}
+$('toBoard') && $('toBoard').addEventListener('click', async () => {
+  if(!lines.length){ toast('Nothing on the ticket yet'); return; }
+  const code = boardCode();
+  let copied = false;
+  try{ await navigator.clipboard.writeText(code); copied = true; }catch(e){}
+  if(!copied){ prompt('Copy this code, then paste it on the job\'s Billing tab:', code); }
+  else toast('Invoice copied \u2014 paste it on the job\'s Billing tab');
+  setTimeout(() => { window.location.href = BOARD_URL; }, copied ? 900 : 0);
+});
+
 $('addCustom').addEventListener('click', () => {
   const d = prompt('Description (labor, freight, shop supplies\u2026)'); if(!d) return;
   const p = parseFloat(prompt('Amount', '0')); if(isNaN(p)) return;
@@ -637,7 +668,7 @@ $('exportCsv').addEventListener('click', () => {
   setTimeout(() => URL.revokeObjectURL(url), 1500);
 });
 $('printBtn').addEventListener('click', () => {
-  const bump = () => { seq++; store.set('b99_seq', String(seq)); stampInv(); };
+  const bump = () => { lastPrintedInv = 'INV-' + seq; seq++; store.set('b99_seq', String(seq)); stampInv(); };
   if(IS_IOS){ sendPdf('invoice').then(ok => { if(ok) bump(); }); return; }
   window.print(); bump();
 });
